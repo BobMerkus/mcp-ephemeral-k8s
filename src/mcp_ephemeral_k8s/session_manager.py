@@ -4,14 +4,15 @@ It is used to create and manage MCP servers in a Kubernetes cluster.
 """
 
 import logging
-from collections.abc import AsyncGenerator
 from typing import Any, Self, cast
 
-from kubernetes import client, config
+from kubernetes import client
 from kubernetes.client.api.batch_v1_api import BatchV1Api
 from kubernetes.client.api.core_v1_api import CoreV1Api
 from kubernetes.client.api_client import ApiClient
 from kubernetes.client.exceptions import ApiException
+from kubernetes.config.incluster_config import load_incluster_config
+from kubernetes.config.kube_config import load_kube_config
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from mcp_ephemeral_k8s.exceptions import MCPJobNotFoundError, MCPServerCreationError
@@ -38,22 +39,22 @@ class KubernetesSessionManager(BaseModel):
         """Load Kubernetes configuration from default location or from service account if running in cluster."""
         self._load_kube_config()
         if self._api_client is None:
-            self._api_client = client.ApiClient()
+            self._api_client = ApiClient()
         if self._batch_v1 is None:
-            self._batch_v1 = client.BatchV1Api(self._api_client)
+            self._batch_v1 = BatchV1Api(self._api_client)
         if self._core_v1 is None:
-            self._core_v1 = client.CoreV1Api(self._api_client)
+            self._core_v1 = CoreV1Api(self._api_client)
         return self
 
     def _load_kube_config(self) -> None:
         """Load Kubernetes configuration from default location or from service account if running in cluster."""
         try:
             # Try to load from default config file
-            config.load_kube_config()
+            load_kube_config()
             logger.info("Using local kubernetes configuration")
         except Exception:
             # If that fails, we might be running in a pod, so try to use service account
-            config.load_incluster_config()
+            load_incluster_config()
             logger.info("Using in-cluster kubernetes configuration")
 
     def __enter__(self) -> Self:
@@ -66,7 +67,7 @@ class KubernetesSessionManager(BaseModel):
         for job_name in self.jobs:
             self._delete_job(job_name, self.jobs[job_name].config.namespace)
 
-    async def __aenter__(self) -> AsyncGenerator["KubernetesSessionManager", None]:
+    async def __aenter__(self) -> "KubernetesSessionManager":
         """
         Create and start the MCP server when entering the context.
 
@@ -148,12 +149,22 @@ class KubernetesSessionManager(BaseModel):
 
         # Create the job
         try:
+            if self._batch_v1 is None:
+                return None
+
             response = self._batch_v1.create_namespaced_job(namespace=config.namespace, body=job)
             logger.info(f"Job '{config.job_name}' created successfully")
             logger.debug(f"Job response: {response}")
-            pod_name = cast(str, response.metadata.name) if isinstance(response.metadata, client.V1ObjectMeta) else None
+
+            pod_name = None
+            if response.metadata is not None:
+                pod_name = cast(str, response.metadata.name)
+
+            if pod_name is None:
+                return None
+
             return ephemeralMcpServer(config=config, pod_name=pod_name)
-        except client.rest.ApiException as e:
+        except ApiException as e:
             logger.exception(msg=f"Error creating job '{config.job_name}'", exc_info=e)
             return None
 
@@ -170,25 +181,38 @@ class KubernetesSessionManager(BaseModel):
         """
         # First get and delete pods with the job label
         try:
+            if self._core_v1 is None:
+                return False
+
             pods = self._core_v1.list_namespaced_pod(namespace=namespace, label_selector=f"app={pod_name}")
 
             for pod in pods.items:
-                logger.info(f"Deleting pod {pod.metadata.name}")
+                if pod.metadata is None:
+                    continue
+
+                pod_name_to_delete = pod.metadata.name
+                if pod_name_to_delete is None:
+                    continue
+
+                logger.info(f"Deleting pod {pod_name_to_delete}")
                 self._core_v1.delete_namespaced_pod(
-                    name=pod.metadata.name,
+                    name=pod_name_to_delete,
                     namespace=namespace,
                     body=client.V1DeleteOptions(grace_period_seconds=0, propagation_policy="Background"),
                 )
-        except client.rest.ApiException as e:
+        except ApiException as e:
             logger.info(f"Error deleting pods: {e}")
 
         # Now delete the job itself
         try:
+            if self._batch_v1 is None:
+                return False
+
             self._batch_v1.delete_namespaced_job(
                 name=pod_name, namespace=namespace, body=client.V1DeleteOptions(propagation_policy="Foreground")
             )
             logger.info(f"Job '{pod_name}' deleted successfully")
-        except client.rest.ApiException as e:
+        except ApiException as e:
             logger.info(f"Error deleting job: {e}")
             return False
         else:
@@ -211,21 +235,26 @@ class KubernetesSessionManager(BaseModel):
             raise MCPJobNotFoundError
 
         try:
+            if self._batch_v1 is None:
+                return None
+
             job = self._batch_v1.read_namespaced_job(name=pod_name, namespace=namespace)
 
             # Get status
-            active = job.status.active if job.status.active else 0
-            succeeded = job.status.succeeded if job.status.succeeded else 0
-            failed = job.status.failed if job.status.failed else 0
+            if job.status is not None:
+                active = job.status.active if job.status.active is not None else 0
+                succeeded = job.status.succeeded if job.status.succeeded is not None else 0
+                failed = job.status.failed if job.status.failed is not None else 0
 
-            logger.info(f"Job '{pod_name}' status:")
-            logger.info(f"Active pods: {active}")
-            logger.info(f"Succeeded pods: {succeeded}")
-            logger.info(f"Failed pods: {failed}")
+                logger.info(f"Job '{pod_name}' status:")
+                logger.info(f"Active pods: {active}")
+                logger.info(f"Succeeded pods: {succeeded}")
+                logger.info(f"Failed pods: {failed}")
 
             # Get job creation time
-            creation_time = job.metadata.creation_timestamp
-            logger.info(f"Creation time: {creation_time}")
+            if job.metadata is not None and job.metadata.creation_timestamp is not None:
+                creation_time = job.metadata.creation_timestamp
+                logger.info(f"Creation time: {creation_time}")
         except ApiException as e:
             if e.status == 404:
                 logger.info(f"Job '{pod_name}' not found")
