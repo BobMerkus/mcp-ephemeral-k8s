@@ -5,13 +5,11 @@ description = "Python implementation to spawn ephemeral Model Context Protocol (
 authors = [{ name = "Bob Merkus", email = "bob.merkus@gmail.com" }]
 readme = "README.md"
 keywords = ['python']
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.11,<4.0"
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -64,7 +62,7 @@ testpaths = ["tests"]
 asyncio_default_fixture_loop_scope = "module"
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py313"
 line-length = 120
 fix = true
 
@@ -123,5 +121,6 @@ source = ["src"]
 
 [tool.uv]
 dev-dependencies = [
+    "mypy>=1.15.0",
     "pre-commit>=4.2.0",
 ]
