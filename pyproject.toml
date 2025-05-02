@@ -120,3 +120,8 @@ skip_empty = true
 [tool.coverage.run]
 branch = true
 source = ["src"]
+
+[tool.uv]
+dev-dependencies = [
+    "pre-commit>=4.2.0",
+]
