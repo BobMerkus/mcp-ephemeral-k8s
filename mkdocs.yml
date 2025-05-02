@@ -1,0 +1,52 @@
+site_name: mcp-ephemeral-k8s
+repo_url: https://github.com/BobMerkus/mcp-ephemeral-k8s
+site_url: https://BobMerkus.github.io/mcp-ephemeral-k8s
+site_description: Python implementation to spawn ephemeral Model Context Protocol (MCP) servers using the kubernetes API.
+site_author: Bob Merkus
+edit_uri: edit/main/docs/
+repo_name: BobMerkus/mcp-ephemeral-k8s
+copyright: Maintained by <a href="https://BobMerkus.com">BobMerkus</a>.
+
+nav:
+  - Home: index.md
+  - Modules: modules.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["src/mcp_ephemeral_k8s"]
+theme:
+  name: material
+  feature:
+    tabs: true
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/BobMerkus/mcp-ephemeral-k8s
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/mcp-ephemeral-k8s
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
