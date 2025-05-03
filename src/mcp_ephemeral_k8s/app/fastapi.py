@@ -31,3 +31,6 @@ async def create_mcp_server(runtime_exec: str, runtime_mcp: str, env: dict[str, 
 async def delete_mcp_server(name: str) -> EphemeralMcpServer:
     manager: KubernetesSessionManager = app.state.session_manager
     return manager.delete_mcp_server(name)
+
+
+__all__ = ["app"]

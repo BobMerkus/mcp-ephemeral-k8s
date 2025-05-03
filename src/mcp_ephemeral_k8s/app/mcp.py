@@ -34,5 +34,7 @@ def delete_mcp_server(name: str) -> None:
     session_manager.delete_mcp_server(name)
 
 
+__all__ = ["mcp"]
+
 if __name__ == "__main__":
     mcp.run(transport="sse")

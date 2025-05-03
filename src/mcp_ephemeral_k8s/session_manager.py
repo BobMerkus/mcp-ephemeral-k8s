@@ -114,7 +114,6 @@ class KubernetesSessionManager(BaseModel):
 
         Args:
             pod_name: Name of the pod
-            namespace: Kubernetes namespace (defaults to the configured namespace)
 
         Returns:
             The job status
@@ -157,3 +156,6 @@ class KubernetesSessionManager(BaseModel):
         """Remove the MCP server port from the outside world."""
         self._core_v1.delete_namespaced_service(name=mcp_server.pod_name, namespace=self.namespace)
         logger.info(f"Service '{mcp_server.pod_name}' deleted successfully")
+
+
+__all__ = ["KubernetesSessionManager"]
