@@ -23,5 +23,9 @@ FROM python:3.12-slim AS runner
 # Copy the environment, but not the source code
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 
+# Copy the fastapi.py file
+RUN touch /app/__init__.py
+COPY src/mcp_ephemeral_k8s/app/fastapi.py /app/fastapi.py
+
 # Run the application
-CMD [ "/app/.venv/bin/mcp-ephemeral-k8s" ]
+CMD [ "/app/.venv/bin/fastapi", "run", "/app/fastapi.py", "--host", "0.0.0.0", "--port", "8000" ]

@@ -598,7 +598,7 @@ name = "mcp-ephemeral-k8s"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
-    { name = "fastapi" },
+    { name = "fastapi", extra = ["standard"] },
     { name = "kubernetes" },
     { name = "mcp" },
     { name = "pydantic" },
@@ -607,7 +607,6 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "deptry" },
-    { name = "fastapi", extra = ["standard"] },
     { name = "kubernetes-stubs" },
     { name = "mkdocs" },
     { name = "mkdocs-material" },
@@ -623,7 +622,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.115.12" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.115.12" },
     { name = "kubernetes", specifier = ">=32.0.1" },
     { name = "mcp", specifier = ">=1.7.1" },
     { name = "pydantic", specifier = ">=2.11.4" },
@@ -632,7 +631,6 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "deptry", specifier = ">=0.23.0" },
-    { name = "fastapi", extras = ["standard"], specifier = ">=0.115.12" },
     { name = "kubernetes-stubs", specifier = ">=22.6.0.post1" },
     { name = "mkdocs", specifier = ">=1.4.2" },
     { name = "mkdocs-material", specifier = ">=8.5.10" },
