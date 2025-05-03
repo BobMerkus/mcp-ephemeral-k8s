@@ -1,0 +1,31 @@
+# Python
+__pycache__
+tests
+data
+*.pyc
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.coverage
+.vscode
+htmlcov
+.venv
+dist
+
+doc
+dist
+docs
+env
+venv
+.venv
+.env
+.env.example
+.env.local
+
+site
+node_modules
+
+# Docker
+Dockerfile
+dockerfiles
+Makefile
