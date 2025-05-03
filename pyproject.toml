@@ -16,7 +16,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+    "fastapi>=0.115.12",
     "kubernetes>=32.0.1",
+    "mcp>=1.7.1",
     "pydantic>=2.11.4",
 ]
 
@@ -24,6 +26,10 @@ dependencies = [
 Homepage = "https://BobMerkus.github.io/mcp-ephemeral-k8s/"
 Repository = "https://github.com/BobMerkus/mcp-ephemeral-k8s"
 Documentation = "https://BobMerkus.github.io/mcp-ephemeral-k8s/"
+
+[project.scripts]
+mcp-ephemeral-k8s-mcp = "mcp_ephemeral_k8s.app.mcp:main"
+mcp-ephemeral-k8s-fastapi = "mcp_ephemeral_k8s.app.fastapi:app"
 
 [build-system]
 requires = ["hatchling"]
@@ -117,4 +123,5 @@ dev-dependencies = [
     "pytest-asyncio>=0.26.0",
     "mypy>=1.15.0",
     "pre-commit>=4.2.0",
+    "fastapi[standard]>=0.115.12",
 ]

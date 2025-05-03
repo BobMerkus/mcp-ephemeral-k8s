@@ -124,17 +124,20 @@ class KubernetesSessionManager(BaseModel):
             raise MCPJobNotFoundError(self.namespace, pod_name)
         return job
 
-    def start_mcp_server(self, config: EphemeralMcpServerConfig) -> EphemeralMcpServer:
+    def create_mcp_server(self, config: EphemeralMcpServerConfig) -> EphemeralMcpServer:
         """Start a new MCP server using the provided configuration."""
         mcp_server = self._create_job(config)
         self.jobs[mcp_server.pod_name] = mcp_server
         return mcp_server
 
-    def delete_mcp_server(self, mcp_server: EphemeralMcpServer) -> None:
+    def delete_mcp_server(self, name: str) -> EphemeralMcpServer:
         """Delete the MCP server."""
-        if mcp_server.pod_name in self.jobs:
-            del self.jobs[mcp_server.pod_name]
-            self._delete_job(mcp_server.pod_name)
+        if name in self.jobs:
+            job = self.jobs[name]
+            self._delete_job(name)
+            del self.jobs[name]
+            return job
+        raise MCPJobNotFoundError(self.namespace, name)
 
     def expose_mcp_server_port(self, mcp_server: EphemeralMcpServer) -> None:
         """Expose the MCP server port to the outside world."""

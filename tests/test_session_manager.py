@@ -26,7 +26,7 @@ def test_session_manager_creation_with_context_manager():
 def test_session_manager_start_mcp_server_default_values():
     with KubernetesSessionManager() as session_manager:
         config = EphemeralMcpServerConfig()
-        mcp_server = session_manager.start_mcp_server(config)
+        mcp_server = session_manager.create_mcp_server(config)
         assert mcp_server is not None
         assert mcp_server.pod_name is not None
         assert mcp_server.config.port is not None
@@ -54,9 +54,9 @@ def test_session_manager_start_mcp_server_invoke_runtime():
     """Test that the MCP server is started and the runtime is invokable."""
     with KubernetesSessionManager() as session_manager:
         config = EphemeralMcpServerConfig()
-        mcp_server = session_manager.start_mcp_server(config)
+        mcp_server = session_manager.create_mcp_server(config)
         try:
             session_manager.expose_mcp_server_port(mcp_server)
         finally:
             session_manager.remove_mcp_server_port(mcp_server)
-            session_manager.delete_mcp_server(mcp_server)
+            session_manager.delete_mcp_server(mcp_server.pod_name)
