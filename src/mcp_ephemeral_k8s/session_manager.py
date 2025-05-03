@@ -4,19 +4,19 @@ It is used to create and manage MCP servers in a Kubernetes cluster.
 """
 
 import logging
-from typing import Any, Self, cast
+from typing import Any, Self
 
 from kubernetes import client
 from kubernetes.client.api.batch_v1_api import BatchV1Api
 from kubernetes.client.api.core_v1_api import CoreV1Api
 from kubernetes.client.api_client import ApiClient
-from kubernetes.client.exceptions import ApiException
 from kubernetes.config.incluster_config import load_incluster_config
 from kubernetes.config.kube_config import load_kube_config
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
+from mcp_ephemeral_k8s.api.model import EphemeralMcpServer, EphemeralMcpServerConfig
 from mcp_ephemeral_k8s.exceptions import MCPJobNotFoundError, MCPServerCreationError
-from mcp_ephemeral_k8s.model import ephemeralMcpServer, ephemeralMcpServerConfig
+from mcp_ephemeral_k8s.k8s.job import create_mcp_server_job, delete_mcp_server_job, get_mcp_server_job_status
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +30,24 @@ class KubernetesSessionManager(BaseModel):
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    jobs: dict[str, ephemeralMcpServer] = Field(default_factory=dict, description="The jobs that are currently running")
-    _api_client: ApiClient | None = PrivateAttr(default=None)
-    _batch_v1: BatchV1Api | None = PrivateAttr(default=None)
-    _core_v1: CoreV1Api | None = PrivateAttr(default=None)
+
+    namespace: str = Field(default="default", description="The namespace to create resources in")
+    jobs: dict[str, EphemeralMcpServer] = Field(
+        default_factory=dict,
+        description="A dictionary mapping between pod names and MCP servers jobs that are running.",
+    )
+    _api_client: ApiClient = PrivateAttr()
+    _batch_v1: BatchV1Api = PrivateAttr()
+    _core_v1: CoreV1Api = PrivateAttr()
 
     def load_session_manager(self) -> Self:
         """Load Kubernetes configuration from default location or from service account if running in cluster."""
         self._load_kube_config()
-        if self._api_client is None:
+        if not hasattr(self, "_api_client"):
             self._api_client = ApiClient()
-        if self._batch_v1 is None:
+        if not hasattr(self, "_batch_v1"):
             self._batch_v1 = BatchV1Api(self._api_client)
-        if self._core_v1 is None:
+        if not hasattr(self, "_core_v1"):
             self._core_v1 = CoreV1Api(self._api_client)
         return self
 
@@ -65,31 +70,9 @@ class KubernetesSessionManager(BaseModel):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Exit the context manager."""
         for job_name in self.jobs:
-            self._delete_job(job_name, self.jobs[job_name].config.namespace)
+            self._delete_job(job_name)
 
-    async def __aenter__(self) -> "KubernetesSessionManager":
-        """
-        Create and start the MCP server when entering the context.
-
-        Returns:
-            The MCP server instance
-        """
-        self.load_session_manager()
-        return self
-
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """
-        Clean up resources when exiting the context.
-
-        This deletes the Kubernetes job and associated pods.
-        """
-        for job_name in self.jobs:
-            self._delete_job(job_name, self.jobs[job_name].config.namespace)
-
-    def _create_job(
-        self,
-        config: ephemeralMcpServerConfig,
-    ) -> ephemeralMcpServer | None:
+    def _create_job(self, config: EphemeralMcpServerConfig) -> EphemeralMcpServer:
         """
         Create a job that will run until explicitly terminated.
 
@@ -104,71 +87,15 @@ class KubernetesSessionManager(BaseModel):
         Returns:
             The MCP server instance
         """
-        # Convert environment variables dictionary to list of V1EnvVar
-        env_list = [client.V1EnvVar(name=key, value=value) for key, value in (config.env or {}).items()]
+        job = create_mcp_server_job(config, self.namespace)
+        response = self._batch_v1.create_namespaced_job(namespace=self.namespace, body=job)
+        logger.info(f"Job '{config.job_name}' created successfully")
+        logger.debug(f"Job response: {response}")
+        if not response.metadata or not response.metadata.name:
+            raise MCPServerCreationError(str(response.metadata))
+        return EphemeralMcpServer(config=config, pod_name=response.metadata.name)
 
-        # Configure the job
-        job = client.V1Job(
-            api_version="batch/v1",
-            kind="Job",
-            metadata=client.V1ObjectMeta(name=config.job_name, namespace=config.namespace),
-            spec=client.V1JobSpec(
-                # Setting backoffLimit to a high number to prevent the job from being marked as failed
-                backoff_limit=10,
-                # We don't set completions or parallelism because we want the job to run indefinitely
-                template=client.V1PodTemplateSpec(
-                    metadata=client.V1ObjectMeta(labels={"app": config.job_name}),
-                    spec=client.V1PodSpec(
-                        containers=[
-                            client.V1Container(
-                                name=config.job_name,
-                                image=config.image,
-                                args=config.args,
-                                # Adding resource requests/limits for better management
-                                resources=client.V1ResourceRequirements(
-                                    requests=config.resource_requests, limits=config.resource_limits
-                                ),
-                                ports=[client.V1ContainerPort(container_port=config.port)],
-                                env=env_list,
-                                # Add readiness probe to wait until the TCP endpoint is ready
-                                readiness_probe=client.V1Probe(
-                                    tcp_socket=client.V1TCPSocketAction(port=config.port),
-                                    initial_delay_seconds=5,
-                                    period_seconds=1,
-                                    timeout_seconds=2,
-                                    success_threshold=1,
-                                    failure_threshold=10,
-                                ),
-                            )
-                        ],
-                        restart_policy="Never",  # This is required for Jobs
-                    ),
-                ),
-            ),
-        )
-
-        # Create the job
-        try:
-            if self._batch_v1 is None:
-                return None
-
-            response = self._batch_v1.create_namespaced_job(namespace=config.namespace, body=job)
-            logger.info(f"Job '{config.job_name}' created successfully")
-            logger.debug(f"Job response: {response}")
-
-            pod_name = None
-            if response.metadata is not None:
-                pod_name = cast(str, response.metadata.name)
-
-            if pod_name is None:
-                return None
-
-            return ephemeralMcpServer(config=config, pod_name=pod_name)
-        except ApiException as e:
-            logger.exception(msg=f"Error creating job '{config.job_name}'", exc_info=e)
-            return None
-
-    def _delete_job(self, pod_name: str, namespace: str) -> bool:
+    def _delete_job(self, pod_name: str) -> bool:
         """
         Delete a Kubernetes job and its associated pods.
 
@@ -179,46 +106,9 @@ class KubernetesSessionManager(BaseModel):
         Returns:
             True if the job was deleted successfully, False otherwise
         """
-        # First get and delete pods with the job label
-        try:
-            if self._core_v1 is None:
-                return False
+        return delete_mcp_server_job(self._core_v1, self._batch_v1, pod_name, self.namespace)
 
-            pods = self._core_v1.list_namespaced_pod(namespace=namespace, label_selector=f"app={pod_name}")
-
-            for pod in pods.items:
-                if pod.metadata is None:
-                    continue
-
-                pod_name_to_delete = pod.metadata.name
-                if pod_name_to_delete is None:
-                    continue
-
-                logger.info(f"Deleting pod {pod_name_to_delete}")
-                self._core_v1.delete_namespaced_pod(
-                    name=pod_name_to_delete,
-                    namespace=namespace,
-                    body=client.V1DeleteOptions(grace_period_seconds=0, propagation_policy="Background"),
-                )
-        except ApiException as e:
-            logger.info(f"Error deleting pods: {e}")
-
-        # Now delete the job itself
-        try:
-            if self._batch_v1 is None:
-                return False
-
-            self._batch_v1.delete_namespaced_job(
-                name=pod_name, namespace=namespace, body=client.V1DeleteOptions(propagation_policy="Foreground")
-            )
-            logger.info(f"Job '{pod_name}' deleted successfully")
-        except ApiException as e:
-            logger.info(f"Error deleting job: {e}")
-            return False
-        else:
-            return True
-
-    def get_job_status(self, pod_name: str, namespace: str | None = None) -> None | client.V1Job:
+    def get_job_status(self, pod_name: str) -> None | client.V1Job:
         """
         Get current status of a job.
 
@@ -229,46 +119,38 @@ class KubernetesSessionManager(BaseModel):
         Returns:
             The job status
         """
-        if namespace is None and pod_name in self.jobs:
-            namespace = self.jobs[pod_name].config.namespace
-        elif namespace is None:
-            raise MCPJobNotFoundError
+        job = get_mcp_server_job_status(self._batch_v1, pod_name, self.namespace)
+        if job is None:
+            raise MCPJobNotFoundError(self.namespace, pod_name)
+        return job
 
-        try:
-            if self._batch_v1 is None:
-                return None
-
-            job = self._batch_v1.read_namespaced_job(name=pod_name, namespace=namespace)
-
-            # Get status
-            if job.status is not None:
-                active = job.status.active if job.status.active is not None else 0
-                succeeded = job.status.succeeded if job.status.succeeded is not None else 0
-                failed = job.status.failed if job.status.failed is not None else 0
-
-                logger.info(f"Job '{pod_name}' status:")
-                logger.info(f"Active pods: {active}")
-                logger.info(f"Succeeded pods: {succeeded}")
-                logger.info(f"Failed pods: {failed}")
-
-            # Get job creation time
-            if job.metadata is not None and job.metadata.creation_timestamp is not None:
-                creation_time = job.metadata.creation_timestamp
-                logger.info(f"Creation time: {creation_time}")
-        except ApiException as e:
-            if e.status == 404:
-                logger.info(f"Job '{pod_name}' not found")
-            else:
-                logger.info(f"Error getting job status: {e}")
-            return None
-        else:
-            return job
-
-    async def start_mcp_server(self, config: ephemeralMcpServerConfig) -> ephemeralMcpServer:
+    def start_mcp_server(self, config: EphemeralMcpServerConfig) -> EphemeralMcpServer:
         """Start a new MCP server using the provided configuration."""
-        # Create the job
         mcp_server = self._create_job(config)
-        if mcp_server is None:
-            raise MCPServerCreationError
         self.jobs[mcp_server.pod_name] = mcp_server
         return mcp_server
+
+    def delete_mcp_server(self, mcp_server: EphemeralMcpServer) -> None:
+        """Delete the MCP server."""
+        if mcp_server.pod_name in self.jobs:
+            del self.jobs[mcp_server.pod_name]
+            self._delete_job(mcp_server.pod_name)
+
+    def expose_mcp_server_port(self, mcp_server: EphemeralMcpServer) -> None:
+        """Expose the MCP server port to the outside world."""
+        self._core_v1.create_namespaced_service(
+            namespace=self.namespace,
+            body=client.V1Service(
+                metadata=client.V1ObjectMeta(name=mcp_server.pod_name),
+                spec=client.V1ServiceSpec(
+                    selector={"app": mcp_server.pod_name},
+                    ports=[client.V1ServicePort(port=mcp_server.config.port)],
+                ),
+            ),
+        )
+        logger.info(f"Service '{mcp_server.pod_name}' created successfully")
+
+    def remove_mcp_server_port(self, mcp_server: EphemeralMcpServer) -> None:
+        """Remove the MCP server port from the outside world."""
+        self._core_v1.delete_namespaced_service(name=mcp_server.pod_name, namespace=self.namespace)
+        logger.info(f"Service '{mcp_server.pod_name}' deleted successfully")
