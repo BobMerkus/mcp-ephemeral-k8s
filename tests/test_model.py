@@ -1,4 +1,6 @@
-from mcp_ephemeral_k8s.api.model import EphemeralMcpServer, EphemeralMcpServerConfig
+from pydantic import HttpUrl
+
+from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServer, EphemeralMcpServerConfig
 
 
 def test_model_default_values():
@@ -21,5 +23,5 @@ def test_model_default_values():
     assert mcp_server_config.job_name == "mcp-ephemeral-proxy-job"
 
     mcp_server = EphemeralMcpServer(config=mcp_server_config, pod_name="mcp-proxy-pod")
-    assert mcp_server.url == f"http://{mcp_server.pod_name}:{mcp_server.config.port}"
-    assert mcp_server.sse_url == f"{mcp_server.url}/sse"
+    assert mcp_server.url == HttpUrl(f"http://{mcp_server.pod_name}:{mcp_server.config.port}")
+    assert mcp_server.sse_url == HttpUrl(f"{mcp_server.url}/sse")

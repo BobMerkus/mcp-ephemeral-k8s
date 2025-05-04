@@ -3,7 +3,7 @@ import logging
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
-from mcp_ephemeral_k8s.api.model import EphemeralMcpServerConfig
+from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -13,12 +13,8 @@ def create_mcp_server_job(config: EphemeralMcpServerConfig, namespace: str) -> c
     Create a job that will run until explicitly terminated.
 
     Args:
-        job_name: Name of the job
+        config: The configuration for the MCP server
         namespace: Kubernetes namespace
-        image: Container image to use
-        args: Arguments to pass to the container
-        port: Port to expose the MCP server on
-        env: Environment variables to set
 
     Returns:
         The MCP server instance
@@ -73,8 +69,10 @@ def delete_mcp_server_job(
     Delete a Kubernetes job and its associated pods.
 
     Args:
-        job_name: Name of the job to delete
-        namespace: Kubernetes namespace
+        core_v1: The Kubernetes core API client
+        batch_v1: The Kubernetes batch API client
+        pod_name: The name of the pod to delete
+        namespace: The namespace of the pod
 
     Returns:
         True if the job was deleted successfully, False otherwise

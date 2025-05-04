@@ -2,7 +2,7 @@
 
 from mcp.server.fastmcp import FastMCP
 
-from mcp_ephemeral_k8s.api.model import EphemeralMcpServer, EphemeralMcpServerConfig
+from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServer, EphemeralMcpServerConfig
 from mcp_ephemeral_k8s.session_manager import KubernetesSessionManager
 
 mcp = FastMCP("mcp-ephemeral-k8s")

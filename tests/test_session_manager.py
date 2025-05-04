@@ -2,8 +2,8 @@ import time
 
 import pytest
 
-from mcp_ephemeral_k8s.api.model import EphemeralMcpServerConfig
-from mcp_ephemeral_k8s.exceptions import MCPJobNotFoundError
+from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServerConfig
+from mcp_ephemeral_k8s.api.exceptions import MCPJobNotFoundError
 from mcp_ephemeral_k8s.session_manager import KubernetesSessionManager
 
 

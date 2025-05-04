@@ -2,7 +2,7 @@
 This module contains the models for the MCP ephemeral K8s library.
 """
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, HttpUrl, computed_field
 
 
 class EphemeralMcpServerConfig(BaseModel):
@@ -58,19 +58,21 @@ class EphemeralMcpServer(BaseModel):
     """The MCP server that is running in a Kubernetes pod."""
 
     config: EphemeralMcpServerConfig = Field(description="The configuration that was used to create the MCP server")
-    pod_name: str = Field(description="The name of the pod that is running the MCP server")
+    pod_name: str = Field(
+        description="The name of the pod that is running the MCP server", examples=["mcp-ephemeral-proxy-test"]
+    )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def url(self) -> str:
+    def url(self) -> HttpUrl:
         """The Uniform Resource Locator (URL) for the MCP server."""
-        return f"http://{self.pod_name}:{self.config.port}"
+        return HttpUrl(f"http://{self.pod_name}:{self.config.port}")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def sse_url(self) -> str:
+    def sse_url(self) -> HttpUrl:
         """The Server-Sent Events (SSE) URL for the MCP server."""
-        return f"{self.url}/sse"
+        return HttpUrl(f"{self.url}/sse")
 
 
 __all__ = ["EphemeralMcpServer", "EphemeralMcpServerConfig"]

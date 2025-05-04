@@ -14,8 +14,8 @@ from kubernetes.config.incluster_config import load_incluster_config
 from kubernetes.config.kube_config import load_kube_config
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
-from mcp_ephemeral_k8s.api.model import EphemeralMcpServer, EphemeralMcpServerConfig
-from mcp_ephemeral_k8s.exceptions import MCPJobNotFoundError, MCPServerCreationError
+from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServer, EphemeralMcpServerConfig
+from mcp_ephemeral_k8s.api.exceptions import MCPJobNotFoundError, MCPServerCreationError
 from mcp_ephemeral_k8s.k8s.job import create_mcp_server_job, delete_mcp_server_job, get_mcp_server_job_status
 
 logger = logging.getLogger(__name__)
