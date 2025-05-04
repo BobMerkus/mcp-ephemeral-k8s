@@ -45,6 +45,14 @@ jobs:
 
       - name: Create k8s Kind Cluster
         uses: helm/kind-action@v1
+        with:
+          cluster_name: kind-chart-testing
+
+      - name: Docker build the proxy
+        run: docker build -t mcp-ephemeral-k8s-proxy:latest -f dockerfiles/mcp-epheremal-proxy/Dockerfile .
+
+      - name: Load the proxy image into the cluster
+        run: kind load docker-image mcp-ephemeral-k8s-proxy:latest --name kind-chart-testing
 
       - name: Run tests
         run: uv run python -m pytest tests --cov --cov-config=pyproject.toml --cov-report=xml

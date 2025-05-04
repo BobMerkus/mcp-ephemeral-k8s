@@ -4,6 +4,8 @@ This module contains the models for the MCP ephemeral K8s library.
 
 from pydantic import BaseModel, Field, HttpUrl, computed_field
 
+from mcp_ephemeral_k8s.k8s.uid import generate_unique_id
+
 
 class EphemeralMcpServerConfig(BaseModel):
     """Configuration for Kubernetes resources."""
@@ -51,7 +53,7 @@ class EphemeralMcpServerConfig(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def job_name(self) -> str:
-        return f"{self.image_name}-job"
+        return generate_unique_id(prefix=self.image_name)
 
 
 class EphemeralMcpServer(BaseModel):

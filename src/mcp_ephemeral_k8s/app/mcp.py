@@ -12,11 +12,12 @@ session_manager = KubernetesSessionManager(namespace="default", jobs={})
 @mcp.tool("list_mcp_servers")
 def list_mcp_servers() -> list[EphemeralMcpServer]:
     """List all running MCP servers."""
-    return list(session_manager.jobs.values())
+    with session_manager:
+        return list(session_manager.jobs.values())
 
 
 @mcp.tool("create_mcp_server")
-def create_mcp_server(runtime_exec: str, runtime_mcp: str, env: dict[str, str]) -> None:
+def create_mcp_server(runtime_exec: str, runtime_mcp: str, env: dict[str, str]) -> EphemeralMcpServer:
     """Create a new MCP server.
 
     Args:
@@ -25,16 +26,20 @@ def create_mcp_server(runtime_exec: str, runtime_mcp: str, env: dict[str, str]) 
         env: The environment variables to set for the MCP server.
     """
     config = EphemeralMcpServerConfig(runtime_exec=runtime_exec, runtime_mcp=runtime_mcp, env=env)
-    session_manager.create_mcp_server(config)
+    with session_manager:
+        return session_manager.create_mcp_server(config)
 
 
 @mcp.tool("delete_mcp_server")
-def delete_mcp_server(name: str) -> None:
+def delete_mcp_server(name: str) -> EphemeralMcpServer:
     """Delete an MCP server."""
-    session_manager.delete_mcp_server(name)
+    with session_manager:
+        return session_manager.delete_mcp_server(name)
 
 
-__all__ = ["mcp"]
+def main() -> None:
+    mcp.run(transport="sse")
+
 
 if __name__ == "__main__":
-    mcp.run(transport="sse")
+    main()

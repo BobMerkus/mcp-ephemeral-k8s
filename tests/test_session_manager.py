@@ -41,7 +41,7 @@ def test_session_manager_start_mcp_server_default_values():
         assert result.status.failed is None or result.status.failed == 1
 
     # wait for the jobs to be deleted from the cluster
-    time.sleep(1)
+    time.sleep(5)
 
     # after the context manager exits, the job should be deleted
     with KubernetesSessionManager() as session_manager, pytest.raises(MCPJobNotFoundError):
