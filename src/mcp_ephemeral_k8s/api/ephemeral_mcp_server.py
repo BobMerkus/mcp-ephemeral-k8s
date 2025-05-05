@@ -26,7 +26,7 @@ class EphemeralMcpServerConfig(BaseModel):
         examples=["uvx", "npx"],
     )
     runtime_mcp: str | None = Field(
-        description="The runtime to use for the MCP container. Can be any supported MCP server runtime loadable via the `runtime_exec`.",
+        description="The runtime to use for the MCP container. Can be any supported MCP server runtime loadable via the `runtime_exec`. See the [MCP Server Runtimes](https://github.com/modelcontextprotocol/servers/tree/main) for a list of supported runtimes.",
         examples=["mcp-server-fetch", "@modelcontextprotocol/server-github"],
     )
     image: str = Field(
@@ -104,13 +104,13 @@ class EphemeralMcpServer(BaseModel):
     @property
     def url(self) -> HttpUrl:
         """The Uniform Resource Locator (URL) for the MCP server."""
-        return HttpUrl(f"http://{self.pod_name}:{self.config.port}")
+        return HttpUrl(f"http://{self.pod_name}.default.svc.cluster.local:{self.config.port}/")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def sse_url(self) -> HttpUrl:
         """The Server-Sent Events (SSE) URL for the MCP server."""
-        return HttpUrl(f"{self.url}/sse")
+        return HttpUrl(f"{self.url}sse")
 
 
 __all__ = ["EphemeralMcpServer", "EphemeralMcpServerConfig"]

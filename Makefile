@@ -33,12 +33,22 @@ clean-build: ## Clean build artifacts
 .PHONY: docker-build
 docker-build: ## Build the docker image
 	@echo "🚀 Building docker image"
-	@docker buildx build . --platform linux/amd64,linux/arm64 -t mcp-ephemeral-k8s:latest --push
+	@docker buildx build . --platform linux/amd64,linux/arm64 -t ghcr.io/bobmerkus/mcp-ephemeral-k8s:latest --push
 
 .PHONY: docker-build-local
 docker-build-local: ## Build the docker image locally
 	@echo "🚀 Building docker image"
-	@docker buildx build . -t mcp-ephemeral-k8s:latest --load
+	@docker buildx build . -t ghcr.io/bobmerkus/mcp-ephemeral-k8s:latest --load
+
+.PHONY: docker-build-proxy
+docker-build-proxy: ## Build the docker image proxy
+	@echo "🚀 Building docker image"
+	@docker buildx build . --file dockerfiles/mcp-epheremal-proxy/Dockerfile -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --push
+
+.PHONY: docker-build-local-proxy
+docker-build-local-proxy: ## Build the docker image proxy locally
+	@echo "🚀 Building docker image"
+	@docker buildx build . --file dockerfiles/mcp-epheremal-proxy/Dockerfile -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --load
 
 .PHONY: publish
 publish: ## Publish a release to PyPI.

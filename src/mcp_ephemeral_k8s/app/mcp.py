@@ -6,9 +6,8 @@ from contextlib import asynccontextmanager
 from fastmcp import Context, FastMCP
 from kubernetes import client
 
-from mcp_ephemeral_k8s import __version__
+from mcp_ephemeral_k8s import KubernetesSessionManager, __version__, presets
 from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServer, EphemeralMcpServerConfig
-from mcp_ephemeral_k8s.session_manager import KubernetesSessionManager
 
 
 @asynccontextmanager
@@ -27,6 +26,12 @@ mcp = FastMCP(name="mcp-ephemeral-k8s", lifespan=lifespan)
 @mcp.resource("config://version")
 def get_version() -> str:
     return __version__
+
+
+# Preset configurations
+@mcp.resource("config://presets")
+def list_presets() -> list[EphemeralMcpServerConfig]:
+    return [presets.FETCH, presets.GITHUB, presets.GITLAB, presets.GIT, presets.TIME, presets.BEDROCK_KB_RETRIEVAL]
 
 
 @mcp.tool("list_mcp_servers")
@@ -58,26 +63,26 @@ def create_mcp_server(
 
 
 @mcp.tool("delete_mcp_server")
-def delete_mcp_server(ctx: Context, name: str, wait_for_deletion: bool = True) -> EphemeralMcpServer:
+def delete_mcp_server(ctx: Context, pod_name: str, wait_for_deletion: bool = True) -> EphemeralMcpServer:
     """Delete an MCP server.
 
     Args:
-        name: The name of the MCP server to delete.
+        pod_name: The name of the MCP server to delete.
         wait_for_deletion: Whether to wait for the MCP server to be deleted before returning.
     """
     session_manager: KubernetesSessionManager = ctx.request_context.lifespan_context
-    return session_manager.delete_mcp_server(name, wait_for_deletion=wait_for_deletion)
+    return session_manager.delete_mcp_server(pod_name, wait_for_deletion=wait_for_deletion)
 
 
 @mcp.tool("get_mcp_server_status")
-def get_mcp_server_status(ctx: Context, name: str) -> client.V1Job | None:
+def get_mcp_server_status(ctx: Context, pod_name: str) -> client.V1Job | None:
     """Get the status of an MCP server.
 
     Args:
-        name: The name of the MCP server to get the status of.
+        pod_name: The name of the MCP server to get the status of.
     """
     session_manager: KubernetesSessionManager = ctx.request_context.lifespan_context
-    return session_manager._get_job_status(name)
+    return session_manager._get_job_status(pod_name)
 
 
 def main() -> None:

@@ -49,25 +49,33 @@ jobs:
         run: ct lint --debug --config ./.github/configs/ct.yaml --lint-conf ./.github/configs/lintconf.yaml
 
       - name: Create kind cluster
-        uses: helm/kind-action@v1.12.0
         if: steps.list-changed.outputs.changed == 'true'
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: kind-chart-testing
 
       - name: Create namespace
         if: steps.list-changed.outputs.changed == 'true'
         run: kubectl create namespace mcp-ephemeral
 
+      - name: Get current helm chart app version
+        id: get-chart-version
+        run: "app_version=$(helm show chart charts/mcp-ephemeral-k8s | grep appVersion | cut -d: -f2 | tr -d ' '); echo \"app_version=$app_version\" >> $GITHUB_OUTPUT"
 
+      - name: Build Dockerfile for chart
+        if: steps.list-changed.outputs.changed == 'true'
+        run: docker build -t ghcr.io/bobmerkus/mcp-ephemeral-k8s:${{ steps.get-chart-version.outputs.app_version }} . --load
 
-      - name: Create Image Pull Secret
+      - name: Build proxy image
+        if: steps.list-changed.outputs.changed == 'true'
+        run: docker build -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:${{ steps.get-chart-version.outputs.app_version }} -f dockerfiles/mcp-epheremal-proxy/Dockerfile . --load
+
+      - name: Load images into kind cluster
         if: steps.list-changed.outputs.changed == 'true'
         run: |
-          kubectl create secret docker-registry ghcr-login-secret \
-            --docker-server=ghcr.io \
-            --docker-username=${{ github.repository_owner }} \
-            --docker-password=${{ secrets.GITHUB_TOKEN }} \
-            --docker-email=helm-bot@users.noreply.github.com \
-            --namespace mcp-ephemeral
+          kind load docker-image ghcr.io/bobmerkus/mcp-ephemeral-k8s:${{ steps.get-chart-version.outputs.app_version }} --name kind-chart-testing
+          kind load docker-image ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:${{ steps.get-chart-version.outputs.app_version }} --name kind-chart-testing
 
       - name: Run chart-testing (install)
-        run: ct install --config ./.github/configs/ct.yaml --namespace mcp-ephemeral
         if: steps.list-changed.outputs.changed == 'true'
+        run: ct install --config ./.github/configs/ct.yaml --namespace mcp-ephemeral

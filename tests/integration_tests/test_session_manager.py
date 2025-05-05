@@ -1,8 +1,47 @@
 import pytest
 
+from mcp_ephemeral_k8s import KubernetesSessionManager, presets
 from mcp_ephemeral_k8s.api.exceptions import MCPNamespaceNotFoundError
-from mcp_ephemeral_k8s.integrations.presets import BEDROCK_KB_RETRIEVAL, FETCH, GIT, GITHUB, GITLAB, TIME
-from mcp_ephemeral_k8s.session_manager import KubernetesSessionManager
+
+
+@pytest.mark.integration
+def test_session_manager_attributes(kubernetes_session_manager: KubernetesSessionManager):
+    """Test that the session manager has the expected attributes."""
+    assert kubernetes_session_manager is not None
+    assert hasattr(kubernetes_session_manager, "_api_client")
+    assert hasattr(kubernetes_session_manager, "_batch_v1")
+    assert hasattr(kubernetes_session_manager, "_core_v1")
+
+
+@pytest.mark.integration
+def test_session_manager_start_mcp_server_time(kubernetes_session_manager: KubernetesSessionManager):
+    """Test that the MCP server for time is started correctly."""
+    mcp_server = kubernetes_session_manager.create_mcp_server(presets.TIME, wait_for_ready=True)
+    assert mcp_server is not None
+    assert mcp_server.pod_name is not None
+    # Cleanup after test
+    kubernetes_session_manager.delete_mcp_server(mcp_server.pod_name, wait_for_deletion=True)
+
+
+@pytest.mark.integration
+def test_session_manager_start_mcp_server_fetch(kubernetes_session_manager: KubernetesSessionManager):
+    """Test that the MCP server for fetch is started correctly."""
+    mcp_server = kubernetes_session_manager.create_mcp_server(presets.FETCH, wait_for_ready=True)
+    assert mcp_server is not None
+    assert mcp_server.pod_name is not None
+    assert mcp_server.config.port is not None
+    assert mcp_server.url is not None
+    assert mcp_server.sse_url is not None
+
+    # check that the job was created successfully
+    result = kubernetes_session_manager._get_job_status(mcp_server.pod_name)
+    assert result is not None
+    assert result.status.active == 1
+    assert result.status.succeeded is None
+    assert result.status.failed is None
+
+    # Cleanup after test
+    kubernetes_session_manager.delete_mcp_server(mcp_server.pod_name, wait_for_deletion=True)
 
 
 @pytest.mark.integration
@@ -36,112 +75,72 @@ def test_session_manager_invalid_namespace():
 
 
 @pytest.mark.integration
-def test_session_manager_start_mcp_server_time():
-    with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(TIME, wait_for_ready=True)
-        assert mcp_server is not None
-        assert mcp_server.pod_name is not None
-
-
-@pytest.mark.integration
-def test_session_manager_start_mcp_server_default_values():
-    with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(FETCH, wait_for_ready=True)
-        assert mcp_server is not None
-        assert mcp_server.pod_name is not None
-        assert mcp_server.config.port is not None
-        assert mcp_server.url is not None
-        assert mcp_server.sse_url is not None
-        # check that the job was created successfully
-        result = session_manager._get_job_status(mcp_server.pod_name)
-        assert result is not None
-        assert result.status.active == 1
-        assert result.status.succeeded is None
-        assert result.status.failed is None
-        # manually delete the job
-        session_manager.delete_mcp_server(
-            mcp_server.pod_name, wait_for_deletion=True
-        )  # explicitly wait for deletion, the context manager will not wait for deletion
-
-    # after the context manager exits, the job should be deleted
-    with KubernetesSessionManager() as session_manager:
-        # check that the job was deleted
-        result = session_manager._get_job_status(mcp_server.pod_name)
-        assert result is None
-
-
-@pytest.mark.integration
-def test_session_manager_start_mcp_server_git():
+def test_session_manager_start_mcp_server_git(kubernetes_session_manager: KubernetesSessionManager):
     """Test that the MCP server is started and the runtime is invokable.
     [MCP Source](https://github.com/modelcontextprotocol/servers/tree/main/src/git)
     """
-    with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(GIT, wait_for_ready=True)
-        assert mcp_server is not None
-        # check that the job was created successfully
-        status = session_manager._get_job_status(mcp_server.pod_name)
-        assert status is not None
-        assert status.status.active == 1
-        assert status.status.succeeded is None
-        assert status.status.failed is None
+    mcp_server = kubernetes_session_manager.create_mcp_server(presets.GIT, wait_for_ready=True)
+    assert mcp_server is not None
+    # check that the job was created successfully
+    status = kubernetes_session_manager._get_job_status(mcp_server.pod_name)
+    assert status is not None
+    assert status.status.active == 1
+    assert status.status.succeeded is None
+    assert status.status.failed is None
 
 
 @pytest.mark.integration
-def test_session_manager_start_mcp_server_fetch_expose_port():
+def test_session_manager_start_mcp_server_fetch_expose_port(kubernetes_session_manager: KubernetesSessionManager):
     """Test that the MCP server is started and the runtime is invokable.
     [MCP Source](https://github.com/modelcontextprotocol/servers/tree/main/src/fetch)
     """
-    with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(FETCH)
-        try:
-            session_manager.expose_mcp_server_port(mcp_server)
-        finally:
-            session_manager.remove_mcp_server_port(mcp_server)
+    mcp_server = kubernetes_session_manager.create_mcp_server(presets.FETCH, expose_port=False)
+    try:
+        kubernetes_session_manager.expose_mcp_server_port(mcp_server)
+    finally:
+        kubernetes_session_manager.remove_mcp_server_port(mcp_server)
 
 
 @pytest.mark.integration
-def test_session_manager_start_mcp_server_github():
+def test_session_manager_start_mcp_server_github(kubernetes_session_manager: KubernetesSessionManager):
     """Test that the MCP server is started and the runtime is invokable.
     [MCP Source](https://github.com/github/github-mcp-server)
     """
-    with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(GITHUB, wait_for_ready=True)
-        assert mcp_server is not None
-        # check that the job was created successfully
-        status = session_manager._get_job_status(mcp_server.pod_name)
-        assert status is not None
-        assert status.status.active == 1
-        assert status.status.succeeded is None
-        assert status.status.failed is None
+    mcp_server = kubernetes_session_manager.create_mcp_server(presets.GITHUB, wait_for_ready=True, expose_port=False)
+    assert mcp_server is not None
+    # check that the job was created successfully
+    status = kubernetes_session_manager._get_job_status(mcp_server.pod_name)
+    assert status is not None
+    assert status.status.active == 1
+    assert status.status.succeeded is None
+    assert status.status.failed is None
 
 
 @pytest.mark.integration
-def test_session_manager_start_mcp_server_gitlab():
+def test_session_manager_start_mcp_server_gitlab(kubernetes_session_manager: KubernetesSessionManager):
     """Test that the MCP server is started and the runtime is invokable.
     [MCP Source](https://github.com/zereight/mcp-gitlab)
     """
-    with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(GITLAB, wait_for_ready=True)
-        assert mcp_server is not None
-        # check that the job was created successfully
-        status = session_manager._get_job_status(mcp_server.pod_name)
-        assert status is not None
-        assert status.status.active == 1
-        assert status.status.succeeded is None
-        assert status.status.failed is None
+    mcp_server = kubernetes_session_manager.create_mcp_server(presets.GITLAB, wait_for_ready=True)
+    assert mcp_server is not None
+    # check that the job was created successfully
+    status = kubernetes_session_manager._get_job_status(mcp_server.pod_name)
+    assert status is not None
+    assert status.status.active == 1
+    assert status.status.succeeded is None
+    assert status.status.failed is None
 
 
 @pytest.mark.integration
-def test_session_manager_start_mcp_server_aws_kb_retrieval():
+def test_session_manager_start_mcp_server_aws_kb_retrieval(kubernetes_session_manager: KubernetesSessionManager):
     """Test that the MCP server is started and the runtime is invokable.
     [MCP Source](https://github.com/awslabs/mcp/tree/main/src/bedrock-kb-retrieval-mcp-server)
     """
-    with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(BEDROCK_KB_RETRIEVAL, wait_for_ready=True)
-        assert mcp_server is not None
-        # check that the job was created successfully
-        status = session_manager._get_job_status(mcp_server.pod_name)
-        assert status is not None
-        assert status.status.active == 1
-        assert status.status.succeeded is None
-        assert status.status.failed is None
+    mcp_server = kubernetes_session_manager.create_mcp_server(presets.BEDROCK_KB_RETRIEVAL, wait_for_ready=True)
+    assert mcp_server is not None
+    # check that the job was created successfully
+    status = kubernetes_session_manager._get_job_status(mcp_server.pod_name)
+    assert status is not None
+    assert status.status.active == 1
+    assert status.status.succeeded is None
+    assert status.status.failed is None

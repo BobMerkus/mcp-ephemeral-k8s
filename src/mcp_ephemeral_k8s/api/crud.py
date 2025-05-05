@@ -24,4 +24,4 @@ class CreateMcpServerRequest(BaseModel):
 
 
 class DeleteMcpServerRequest(BaseModel):
-    name: str = Field(description="The name of the MCP server to delete")
+    pod_name: str = Field(description="The pod name of the MCP server to delete")
