@@ -16,7 +16,7 @@ def test_model_default_values():
         runtime_mcp="mcp-server-fetch",
     )
     assert mcp_server_config.port == 8080
-    assert mcp_server_config.image == "ghcr.io/bobmerkus/mcp-ephemeral-proxy:latest"
+    assert mcp_server_config.image == "ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest"
     assert mcp_server_config.entrypoint == ["mcp-proxy"]
     assert mcp_server_config.args == [
         "--pass-environment",
@@ -93,4 +93,4 @@ def test_model_invalid_runtime():
         EphemeralMcpServerConfig(runtime_exec="uvx", runtime_mcp=None)
 
     with pytest.raises(MCPInvalidRuntimeError):
-        EphemeralMcpServerConfig.from_docker_image("ghcr.io/bobmerkus/mcp-ephemeral-proxy:latest")
+        EphemeralMcpServerConfig.from_docker_image("ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest")

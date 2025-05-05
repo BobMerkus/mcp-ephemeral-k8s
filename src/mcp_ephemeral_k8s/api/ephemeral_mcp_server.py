@@ -30,7 +30,7 @@ class EphemeralMcpServerConfig(BaseModel):
         examples=["mcp-server-fetch", "@modelcontextprotocol/server-github"],
     )
     image: str = Field(
-        default="ghcr.io/bobmerkus/mcp-ephemeral-proxy:latest",
+        default="ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest",
         description="The image to use for the MCP server proxy",
     )
     entrypoint: list[str] | None = Field(
@@ -86,7 +86,7 @@ class EphemeralMcpServerConfig(BaseModel):
 
     @classmethod
     def from_docker_image(cls, image: str, entrypoint: list[str] | None = None, **kwargs: Any) -> Self:
-        if image == "ghcr.io/bobmerkus/mcp-ephemeral-proxy:latest":
+        if image == "ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest":
             message = "Invalid runtime: image is a proxy image, please use the `runtime_exec` and `runtime_mcp` fields to specify the MCP server to use."
             raise MCPInvalidRuntimeError(runtime_exec=None, runtime_mcp=None, message=message)
         return cls(image=image, entrypoint=entrypoint, runtime_exec=None, runtime_mcp=None, **kwargs)
