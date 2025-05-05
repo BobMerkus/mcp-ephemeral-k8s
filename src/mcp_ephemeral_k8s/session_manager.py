@@ -111,12 +111,7 @@ class KubernetesSessionManager(BaseModel):
         Create a job that will run until explicitly terminated.
 
         Args:
-            job_name: Name of the job
-            namespace: Kubernetes namespace
-            image: Container image to use
-            args: Arguments to pass to the container
-            port: Port to expose the MCP server on
-            env: Environment variables to set
+            config: The configuration for the MCP servers
 
         Returns:
             The MCP server instance
@@ -157,11 +152,19 @@ class KubernetesSessionManager(BaseModel):
         return check_pod_status(self._core_v1, pod_name, self.namespace)
 
     def _wait_for_job_ready(self, pod_name: str) -> None:
-        """Wait for a job's pod to be in the running state and ready (probes successful)."""
+        """Wait for a job's pod to be in the running state and ready (probes successful).
+
+        Args:
+            pod_name: Name of the job/pod
+        """
         wait_for_job_ready(self._batch_v1, self._core_v1, pod_name, self.namespace, self.sleep_time, self.max_wait_time)
 
     def _wait_for_job_deletion(self, pod_name: str) -> None:
-        """Wait for a job to be deleted."""
+        """Wait for a job to be deleted.
+
+        Args:
+            pod_name: Name of the job/pod
+        """
         wait_for_job_deletion(self._batch_v1, pod_name, self.namespace, self.sleep_time, self.max_wait_time)
 
     def _delete_job(self, pod_name: str) -> bool:
@@ -169,32 +172,56 @@ class KubernetesSessionManager(BaseModel):
         Delete a Kubernetes job and its associated pods.
 
         Args:
-            job_name: Name of the job to delete
-            namespace: Kubernetes namespace
+            pod_name: Name of the job/pod
 
         Returns:
             True if the job was deleted successfully, False otherwise
         """
         return delete_mcp_server_job(self._core_v1, self._batch_v1, pod_name, self.namespace)
 
-    def create_mcp_server(self, config: EphemeralMcpServerConfig, wait_for_ready: bool = True) -> EphemeralMcpServer:
-        """Start a new MCP server using the provided configuration."""
+    def create_mcp_server(
+        self, config: EphemeralMcpServerConfig, wait_for_ready: bool = True, expose_port: bool = True
+    ) -> EphemeralMcpServer:
+        """Start a new MCP server using the provided configuration.
+
+        Args:
+            config: The configuration for the MCP servers
+            wait_for_ready: Whether to wait for the job to be ready
+
+        Returns:
+            The MCP server instance
+        """
         mcp_server = self._create_job(config)
         self.jobs[mcp_server.pod_name] = mcp_server
         if wait_for_ready:
             self._wait_for_job_ready(mcp_server.pod_name)
+        if expose_port:
+            self.expose_mcp_server_port(mcp_server)
         return mcp_server
 
-    def delete_mcp_server(self, name: str, wait_for_deletion: bool = True) -> EphemeralMcpServer:
-        """Delete the MCP server."""
-        if name in self.jobs:
-            job = self.jobs[name]
-            self._delete_job(name)
-            del self.jobs[name]
+    def delete_mcp_server(self, pod_name: str, wait_for_deletion: bool = True) -> EphemeralMcpServer:
+        """Delete the MCP server.
+
+        Args:
+            pod_name: Name of the job/pod
+            wait_for_deletion: Whether to wait for the job to be deleted
+
+        Returns:
+            The MCP server instance
+        """
+        if pod_name in self.jobs:
+            try:
+                self.remove_mcp_server_port(self.jobs[pod_name])
+            except Exception:
+                logger.warning(f"Failed to remove MCP server port for job {pod_name}")
+            self._delete_job(pod_name)
             if wait_for_deletion:
-                self._wait_for_job_deletion(name)
-            return job
-        raise MCPJobNotFoundError(self.namespace, name)
+                self._wait_for_job_deletion(pod_name)
+            config = self.jobs[pod_name].config
+            result = EphemeralMcpServer(config=config, pod_name=pod_name)
+            del self.jobs[pod_name]
+            return result
+        raise MCPJobNotFoundError(self.namespace, pod_name)
 
     def expose_mcp_server_port(self, mcp_server: EphemeralMcpServer) -> None:
         """Expose the MCP server port to the outside world."""

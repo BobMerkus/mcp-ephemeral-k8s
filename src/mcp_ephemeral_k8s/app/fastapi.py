@@ -43,13 +43,13 @@ async def create_mcp_server(request: CreateMcpServerRequest) -> EphemeralMcpServ
         runtime_exec=request.runtime_exec, runtime_mcp=request.runtime_mcp, env=request.env
     )
     manager: KubernetesSessionManager = app.state.session_manager
-    return manager.create_mcp_server(config)
+    return manager.create_mcp_server(config=config, wait_for_ready=True)
 
 
 @app.post("/delete_mcp_server")
 async def delete_mcp_server(request: DeleteMcpServerRequest) -> EphemeralMcpServer:
     manager: KubernetesSessionManager = app.state.session_manager
     try:
-        return manager.delete_mcp_server(request.name)
+        return manager.delete_mcp_server(request.pod_name, wait_for_deletion=True)
     except MCPJobNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from None

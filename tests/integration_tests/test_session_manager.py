@@ -1,8 +1,7 @@
 import pytest
 
+from mcp_ephemeral_k8s import KubernetesSessionManager, presets
 from mcp_ephemeral_k8s.api.exceptions import MCPNamespaceNotFoundError
-from mcp_ephemeral_k8s.integrations.presets import BEDROCK_KB_RETRIEVAL, FETCH, GIT, GITHUB, GITLAB, TIME
-from mcp_ephemeral_k8s.session_manager import KubernetesSessionManager
 
 
 @pytest.mark.integration
@@ -38,15 +37,15 @@ def test_session_manager_invalid_namespace():
 @pytest.mark.integration
 def test_session_manager_start_mcp_server_time():
     with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(TIME, wait_for_ready=True)
+        mcp_server = session_manager.create_mcp_server(presets.TIME, wait_for_ready=True)
         assert mcp_server is not None
         assert mcp_server.pod_name is not None
 
 
 @pytest.mark.integration
-def test_session_manager_start_mcp_server_default_values():
+def test_session_manager_start_mcp_server_fetch():
     with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(FETCH, wait_for_ready=True)
+        mcp_server = session_manager.create_mcp_server(presets.FETCH, wait_for_ready=True)
         assert mcp_server is not None
         assert mcp_server.pod_name is not None
         assert mcp_server.config.port is not None
@@ -76,7 +75,7 @@ def test_session_manager_start_mcp_server_git():
     [MCP Source](https://github.com/modelcontextprotocol/servers/tree/main/src/git)
     """
     with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(GIT, wait_for_ready=True)
+        mcp_server = session_manager.create_mcp_server(presets.GIT, wait_for_ready=True)
         assert mcp_server is not None
         # check that the job was created successfully
         status = session_manager._get_job_status(mcp_server.pod_name)
@@ -92,7 +91,7 @@ def test_session_manager_start_mcp_server_fetch_expose_port():
     [MCP Source](https://github.com/modelcontextprotocol/servers/tree/main/src/fetch)
     """
     with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(FETCH)
+        mcp_server = session_manager.create_mcp_server(presets.FETCH, expose_port=False)
         try:
             session_manager.expose_mcp_server_port(mcp_server)
         finally:
@@ -105,7 +104,7 @@ def test_session_manager_start_mcp_server_github():
     [MCP Source](https://github.com/github/github-mcp-server)
     """
     with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(GITHUB, wait_for_ready=True)
+        mcp_server = session_manager.create_mcp_server(presets.GITHUB, wait_for_ready=True, expose_port=False)
         assert mcp_server is not None
         # check that the job was created successfully
         status = session_manager._get_job_status(mcp_server.pod_name)
@@ -121,7 +120,7 @@ def test_session_manager_start_mcp_server_gitlab():
     [MCP Source](https://github.com/zereight/mcp-gitlab)
     """
     with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(GITLAB, wait_for_ready=True)
+        mcp_server = session_manager.create_mcp_server(presets.GITLAB, wait_for_ready=True)
         assert mcp_server is not None
         # check that the job was created successfully
         status = session_manager._get_job_status(mcp_server.pod_name)
@@ -137,7 +136,7 @@ def test_session_manager_start_mcp_server_aws_kb_retrieval():
     [MCP Source](https://github.com/awslabs/mcp/tree/main/src/bedrock-kb-retrieval-mcp-server)
     """
     with KubernetesSessionManager() as session_manager:
-        mcp_server = session_manager.create_mcp_server(BEDROCK_KB_RETRIEVAL, wait_for_ready=True)
+        mcp_server = session_manager.create_mcp_server(presets.BEDROCK_KB_RETRIEVAL, wait_for_ready=True)
         assert mcp_server is not None
         # check that the job was created successfully
         status = session_manager._get_job_status(mcp_server.pod_name)

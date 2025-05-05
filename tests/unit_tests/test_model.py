@@ -32,8 +32,10 @@ def test_model_default_values():
     assert mcp_server_config.job_name.startswith("mcp-ephemeral-k8s-proxy")
 
     mcp_server = EphemeralMcpServer(config=mcp_server_config, pod_name="mcp-proxy-pod")
-    assert mcp_server.url == HttpUrl(f"http://{mcp_server.pod_name}:{mcp_server.config.port}")
-    assert mcp_server.sse_url == HttpUrl(f"{mcp_server.url}/sse")
+    assert mcp_server.url == HttpUrl(
+        f"http://{mcp_server.pod_name}.default.svc.cluster.local:{mcp_server.config.port}/"
+    )
+    assert mcp_server.sse_url == HttpUrl(f"{mcp_server.url}sse")
 
 
 @pytest.mark.unit
@@ -69,8 +71,10 @@ def test_model_docker_values():
     assert mcp_server_config.job_name.startswith("github-mcp-server")
 
     mcp_server = EphemeralMcpServer(config=mcp_server_config, pod_name="github-mcp-server-pod")
-    assert mcp_server.url == HttpUrl(f"http://{mcp_server.pod_name}:{mcp_server.config.port}")
-    assert mcp_server.sse_url == HttpUrl(f"{mcp_server.url}/sse")
+    assert mcp_server.url == HttpUrl(
+        f"http://{mcp_server.pod_name}.default.svc.cluster.local:{mcp_server.config.port}/"
+    )
+    assert mcp_server.sse_url == HttpUrl(f"{mcp_server.url}sse")
 
 
 @pytest.mark.unit

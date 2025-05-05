@@ -42,5 +42,11 @@ async def test_tool_functionality(mcp_server):
         assert body.config.runtime_mcp == "mcp-server-fetch"
         assert body.config.env == {"MCP_SERVER_PORT": "8080"}
 
-        result = await client.call_tool("delete_mcp_server", {"name": body.pod_name})
+        result = await client.call_tool("delete_mcp_server", {"pod_name": body.pod_name})
         assert result is not None
+        data: TextContent = result[0]
+        body = EphemeralMcpServer.model_validate_json(data.text)
+        assert body.pod_name == body.pod_name
+        assert body.config.runtime_exec == "uvx"
+        assert body.config.runtime_mcp == "mcp-server-fetch"
+        assert body.config.env == {"MCP_SERVER_PORT": "8080"}
