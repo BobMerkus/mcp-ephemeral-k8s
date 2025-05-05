@@ -70,7 +70,8 @@ class KubernetesSessionManager(BaseModel):
         if not hasattr(self, "_core_v1"):
             self._core_v1 = CoreV1Api(self._api_client)
         # check if the configured namespace exists
-        if self.namespace not in self._core_v1.list_namespace().items:
+        namespaces = self._core_v1.list_namespace().items
+        if self.namespace not in [namespace.metadata.name for namespace in namespaces if namespace.metadata]:
             raise MCPNamespaceNotFoundError(self.namespace)
         return self
 

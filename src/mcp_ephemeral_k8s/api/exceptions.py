@@ -42,6 +42,14 @@ class MCPInvalidRuntimeError(ValueError):
         super().__init__(f"Invalid runtime: {runtime_exec=} and {runtime_mcp=} {message}")
 
 
+class MCPNamespaceNotFoundError(ValueError):
+    """An error that occurs when the namespace is not found."""
+
+    def __init__(self, namespace: str):
+        self.message = f"Namespace not found: {namespace}"
+        super().__init__(self.message)
+
+
 class MCPJobTimeoutError(Exception):
     """Exception raised when the MCP job times out."""
 
