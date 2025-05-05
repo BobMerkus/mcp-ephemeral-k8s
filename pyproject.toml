@@ -28,8 +28,7 @@ Repository = "https://github.com/BobMerkus/mcp-ephemeral-k8s"
 Documentation = "https://BobMerkus.github.io/mcp-ephemeral-k8s/"
 
 [project.scripts]
-mcp-ephemeral-k8s-mcp = "mcp_ephemeral_k8s.app.mcp:main"
-mcp-ephemeral-k8s-fastapi = "mcp_ephemeral_k8s.app.fastapi:app"
+mcp-ephemeral-k8s = "mcp_ephemeral_k8s.app.mcp:main"
 
 [build-system]
 requires = ["hatchling"]

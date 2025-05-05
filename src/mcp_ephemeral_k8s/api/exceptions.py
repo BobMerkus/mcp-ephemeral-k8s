@@ -19,4 +19,33 @@ class MCPJobNotFoundError(Exception):
         super().__init__(self.message)
 
 
-__all__ = ["MCPJobNotFoundError", "MCPServerCreationError"]
+class MCPInvalidRuntimeError(ValueError):
+    """An error that occurs when the runtime is invalid."""
+
+    def __init__(self, runtime_exec: str | None, runtime_mcp: str | None) -> None:
+        super().__init__(f"Invalid runtime: {runtime_exec} and {runtime_mcp}")
+
+
+class MCPJobTimeoutError(Exception):
+    """Exception raised when the MCP job times out."""
+
+    def __init__(self, namespace: str, pod_name: str):
+        self.message = f"MCP job timed out: {namespace=} {pod_name=}"
+        super().__init__(self.message)
+
+
+class MCPJobError(Exception):
+    """Exception raised when the MCP job is in an error state."""
+
+    def __init__(self, namespace: str, pod_name: str, message: str):
+        self.message = f"MCP job error: {namespace=} {pod_name=} - {message}"
+        super().__init__(self.message)
+
+
+__all__ = [
+    "MCPInvalidRuntimeError",
+    "MCPJobError",
+    "MCPJobNotFoundError",
+    "MCPJobTimeoutError",
+    "MCPServerCreationError",
+]
