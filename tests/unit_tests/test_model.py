@@ -24,6 +24,8 @@ def test_model_default_values():
         "--sse-host=0.0.0.0",
         "uvx",
         "mcp-server-fetch",
+        "--allow-origin",
+        "*",
     ]
     assert mcp_server_config.resource_requests == {"cpu": "100m", "memory": "100Mi"}
     assert mcp_server_config.resource_limits == {"cpu": "200m", "memory": "200Mi"}
@@ -50,6 +52,8 @@ def test_model_runtime_exec_none():
         "--sse-host=0.0.0.0",
         "npx",
         "@modelcontextprotocol/server-github",
+        "--allow-origin",
+        "*",
     ]
 
 
