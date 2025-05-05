@@ -20,12 +20,15 @@ from mcp_ephemeral_k8s.api.exceptions import (
     InvalidKubeConfigError,
     MCPJobNotFoundError,
     MCPNamespaceNotFoundError,
+    MCPPortForwardError,
     MCPServerCreationError,
 )
 from mcp_ephemeral_k8s.k8s.job import (
     check_pod_status,
     create_mcp_server_job,
+    create_port_forward,
     delete_mcp_server_job,
+    delete_port_forward,
     expose_mcp_server_port,
     get_mcp_server_job_status,
     remove_mcp_server_port,
@@ -230,6 +233,25 @@ class KubernetesSessionManager(BaseModel):
     def remove_mcp_server_port(self, mcp_server: EphemeralMcpServer) -> None:
         """Remove the MCP server port from the outside world."""
         remove_mcp_server_port(self._core_v1, mcp_server.pod_name, self.namespace)
+
+    def create_port_forward(self, mcp_server: EphemeralMcpServer) -> object:
+        """
+        Create a port forward to the MCP server.
+
+        Returns:
+            The portforward object that can be used to close the connection
+        """
+        if self.runtime == KubernetesRuntime.KUBECONFIG:
+            return create_port_forward(self._core_v1, mcp_server.pod_name, self.namespace, mcp_server.config.port)
+        else:
+            raise MCPPortForwardError(mcp_server.pod_name, self.namespace, mcp_server.config.port)
+
+    def delete_port_forward(self, mcp_server: EphemeralMcpServer) -> None:
+        """Delete the port forward to the MCP server."""
+        if self.runtime == KubernetesRuntime.KUBECONFIG:
+            delete_port_forward(self._core_v1, mcp_server.pod_name, self.namespace)
+        else:
+            raise MCPPortForwardError(mcp_server.pod_name, self.namespace, mcp_server.config.port)
 
 
 __all__ = ["KubernetesSessionManager"]

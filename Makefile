@@ -15,10 +15,21 @@ check: ## Run code quality tools.
 	@echo "🚀 Checking for obsolete dependencies: Running deptry"
 	@uv run deptry src
 
+
+.PHONY: test-unit
+test-unit: ## Test the code with pytest
+	@echo "🚀 Testing code: Running pytest"
+	@uv run python -m pytest tests/unit_tests -m "unit" --cov --cov-config=pyproject.toml --cov-report=xml
+
+.PHONY: test-integration
+test-integration: ## Test the code with pytest
+	@echo "🚀 Testing code: Running pytest"
+	@uv run python -m pytest tests/integration_tests -m "integration" --cov --cov-config=pyproject.toml --cov-report=xml
+
 .PHONY: test
 test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
-	@uv run python -m pytest --cov --cov-config=pyproject.toml --cov-report=xml
+	@uv run python -m pytest tests -v --cov --cov-config=pyproject.toml --cov-report=xml
 
 .PHONY: build
 build: clean-build ## Build wheel file

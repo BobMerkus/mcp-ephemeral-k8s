@@ -54,11 +54,14 @@ jobs:
       - name: Load the proxy image into the cluster
         run: kind load docker-image ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --name kind-chart-testing
 
-      - name: Run tests
-        run: uv run python -m pytest tests --cov --cov-config=pyproject.toml --cov-report=xml
+      - name: Run Unit tests
+        run: make test-unit
 
       - name: Check typing
         run: uv run mypy
+
+      - name: Run All tests
+        run: make test
 
       - name: Upload coverage reports to Codecov with GitHub Action on Python 3.13
         uses: codecov/codecov-action@v5

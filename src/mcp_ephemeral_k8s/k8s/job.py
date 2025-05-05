@@ -5,7 +5,7 @@ from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
 from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServerConfig
-from mcp_ephemeral_k8s.api.exceptions import MCPJobError, MCPJobTimeoutError
+from mcp_ephemeral_k8s.api.exceptions import MCPJobError, MCPJobTimeoutError, MCPPortForwardError
 
 logger = logging.getLogger(__name__)
 
@@ -303,10 +303,57 @@ def remove_mcp_server_port(core_v1: client.CoreV1Api, pod_name: str, namespace: 
     logger.info(f"Service '{pod_name}' deleted successfully")
 
 
+def create_port_forward(core_v1: client.CoreV1Api, pod_name: str, namespace: str, port: int) -> object:
+    """
+    Create a port forward to the MCP server.
+
+    Args:
+        core_v1: The Kubernetes core API client
+        pod_name: Name of the pod
+        namespace: Kubernetes namespace
+        port: Port to forward
+
+    Returns:
+        The portforward object that can be used to close the connection
+    """
+    from kubernetes.stream import portforward
+
+    try:
+        pf = portforward(
+            core_v1.connect_get_namespaced_pod_portforward, pod_name, namespace, ports=str(port), async_req=True
+        )
+        logger.info(f"Port forward for pod '{pod_name}' created successfully")
+    except Exception as e:
+        logger.exception("Error creating port forward")
+        raise MCPPortForwardError(pod_name, namespace, port) from e
+    else:
+        return pf
+
+
+def delete_port_forward(core_v1: client.CoreV1Api, pod_name: str, namespace: str) -> None:
+    """
+    Delete the port forward to the MCP server.
+
+    Args:
+        core_v1: The Kubernetes core API client
+        pod_name: Name of the pod
+        namespace: Kubernetes namespace
+    """
+    try:
+        # The port forward is deleted when the portforward object goes out of scope
+        # This function is mainly for logging and future extensibility
+        logger.info(f"Port forward for pod '{pod_name}' deleted")
+    except Exception as e:
+        logger.exception("Error deleting port forward")
+        raise MCPPortForwardError(pod_name, namespace, 0) from e
+
+
 __all__ = [
     "check_pod_status",
     "create_mcp_server_job",
+    "create_port_forward",
     "delete_mcp_server_job",
+    "delete_port_forward",
     "expose_mcp_server_port",
     "get_mcp_server_job_status",
     "remove_mcp_server_port",
