@@ -1,8 +1,9 @@
-::: mcp_ephemeral_k8s.api.crud
-::: mcp_ephemeral_k8s.api.ephemeral_mcp_server
-::: mcp_ephemeral_k8s.api.exceptions
-::: mcp_ephemeral_k8s.app.fastapi
-::: mcp_ephemeral_k8s.app.mcp
-::: mcp_ephemeral_k8s.app.lifecycle
 ::: mcp_ephemeral_k8s.session_manager
+::: mcp_ephemeral_k8s.app.mcp
+::: mcp_ephemeral_k8s.app.fastapi
+::: mcp_ephemeral_k8s.api.ephemeral_mcp_server
+::: mcp_ephemeral_k8s.api.crud
+::: mcp_ephemeral_k8s.api.exceptions
 ::: mcp_ephemeral_k8s.k8s.job
+::: mcp_ephemeral_k8s.k8s.uid
+::: mcp_ephemeral_k8s.integrations.presets
