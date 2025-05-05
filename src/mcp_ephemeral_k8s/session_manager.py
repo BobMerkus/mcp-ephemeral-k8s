@@ -177,6 +177,10 @@ class KubernetesSessionManager(BaseModel):
         Returns:
             True if the job was deleted successfully, False otherwise
         """
+        try:
+            self.remove_mcp_server_port(self.jobs[pod_name])
+        except Exception:
+            logger.warning(f"Failed to remove MCP server port for job {pod_name}")
         return delete_mcp_server_job(self._core_v1, self._batch_v1, pod_name, self.namespace)
 
     def create_mcp_server(
@@ -210,10 +214,6 @@ class KubernetesSessionManager(BaseModel):
             The MCP server instance
         """
         if pod_name in self.jobs:
-            try:
-                self.remove_mcp_server_port(self.jobs[pod_name])
-            except Exception:
-                logger.warning(f"Failed to remove MCP server port for job {pod_name}")
             self._delete_job(pod_name)
             if wait_for_deletion:
                 self._wait_for_job_deletion(pod_name)

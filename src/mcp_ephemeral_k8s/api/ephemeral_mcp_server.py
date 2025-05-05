@@ -50,9 +50,17 @@ class EphemeralMcpServerConfig(BaseModel):
         description="Environment variables to set for the container",
         examples=[None, {"GITHUB_PERSONAL_ACCESS_TOKEN": "1234567890", "GITHUB_DYNAMIC_TOOLSETS": "1"}],
     )
+    cors_origins: list[str] | None = Field(
+        default=["*"],
+        description="The origins to allow CORS from",
+        examples=["*"],
+    )
 
     @model_validator(mode="after")
     def validate_runtime_exec(self) -> Self:
+        """Validate the runtime configuration.
+        Both runtime_exec and runtime_mcp must be specified, or neither.
+        """
         if self.runtime_exec is not None and self.runtime_mcp is None:
             message = "Invalid runtime: runtime_exec is specified but runtime_mcp is not"
             raise MCPInvalidRuntimeError(runtime_exec=self.runtime_exec, runtime_mcp=self.runtime_mcp, message=message)
@@ -64,29 +72,41 @@ class EphemeralMcpServerConfig(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def args(self) -> list[str] | None:
+        """The arguments to pass to the MCP server.
+        [mcp-proxy](https://github.com/sparfenyuk/mcp-proxy?tab=readme-ov-file#21-configuration)"""
         if self.runtime_exec is not None and self.runtime_mcp is not None:
-            return [
+            args = [
                 "--pass-environment",
                 f"--sse-port={self.port}",
                 f"--sse-host={self.host}",
                 self.runtime_exec,
                 self.runtime_mcp,
             ]
+            if self.cors_origins is not None:
+                args.extend(["--allow-origin", *self.cors_origins])
+            return args
         return None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def image_name(self) -> str:
+        """The name of the image to use for the MCP server."""
         return self.image.split("/")[-1].split(":")[0]
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def job_name(self) -> str:
+        """The name of the job to use for the MCP server."""
         return generate_unique_id(prefix=self.image_name)
 
     @classmethod
     def from_docker_image(cls, image: str, entrypoint: list[str] | None = None, **kwargs: Any) -> Self:
-        if image == "ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest":
+        """Create an EphemeralMcpServerConfig from a Docker image.
+        The image must be a MCP server image, otherwise an error is raised.
+        """
+        if image.startswith("ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy") or image.startswith(
+            "ghcr.io/sparfenyuk/mcp-proxy"
+        ):
             message = "Invalid runtime: image is a proxy image, please use the `runtime_exec` and `runtime_mcp` fields to specify the MCP server to use."
             raise MCPInvalidRuntimeError(runtime_exec=None, runtime_mcp=None, message=message)
         return cls(image=image, entrypoint=entrypoint, runtime_exec=None, runtime_mcp=None, **kwargs)
@@ -95,9 +115,19 @@ class EphemeralMcpServerConfig(BaseModel):
 class EphemeralMcpServer(BaseModel):
     """The MCP server that is running in a Kubernetes pod."""
 
-    config: EphemeralMcpServerConfig = Field(description="The configuration that was used to create the MCP server")
     pod_name: str = Field(
         description="The name of the pod that is running the MCP server", examples=["mcp-ephemeral-k8s-proxy-test"]
+    )
+    config: EphemeralMcpServerConfig = Field(
+        description="The configuration that was used to create the MCP server",
+        examples=[
+            EphemeralMcpServerConfig(
+                runtime_exec="uvx",
+                runtime_mcp="mcp-server-fetch",
+                port=8000,
+                cors_origins=["*"],
+            )
+        ],
     )
 
     @computed_field  # type: ignore[prop-decorator]

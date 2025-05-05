@@ -25,12 +25,14 @@ mcp = FastMCP(name="mcp-ephemeral-k8s", lifespan=lifespan)
 # Static resource
 @mcp.resource("config://version")
 def get_version() -> str:
+    """Get the version of the MCP ephemeral server."""
     return __version__
 
 
 # Preset configurations
 @mcp.resource("config://presets")
 def list_presets() -> list[EphemeralMcpServerConfig]:
+    """List all preset configurations."""
     return [presets.FETCH, presets.GITHUB, presets.GITLAB, presets.GIT, presets.TIME, presets.BEDROCK_KB_RETRIEVAL]
 
 
