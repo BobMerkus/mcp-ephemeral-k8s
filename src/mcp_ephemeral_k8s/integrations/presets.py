@@ -56,3 +56,8 @@ BEDROCK_KB_RETRIEVAL = EphemeralMcpServerConfig(
     resource_requests={"cpu": "100m", "memory": "100Mi"},
     resource_limits={"cpu": "200m", "memory": "200Mi"},
 )
+
+TIME = EphemeralMcpServerConfig(
+    runtime_exec="uvx",
+    runtime_mcp="mcp-server-time",
+)
