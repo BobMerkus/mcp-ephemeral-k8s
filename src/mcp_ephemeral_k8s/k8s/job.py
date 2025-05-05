@@ -1,9 +1,11 @@
 import logging
+import time
 
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
 from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServerConfig
+from mcp_ephemeral_k8s.api.exceptions import MCPJobError, MCPJobTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,7 @@ def create_mcp_server_job(config: EphemeralMcpServerConfig, namespace: str) -> c
                         client.V1Container(
                             name=config.job_name,
                             image=config.image,
+                            command=config.entrypoint,
                             image_pull_policy="IfNotPresent",
                             args=config.args,
                             resources=client.V1ResourceRequirements(
@@ -146,4 +149,167 @@ def get_mcp_server_job_status(batch_v1: client.BatchV1Api, pod_name: str, namesp
         return job
 
 
-__all__ = ["create_mcp_server_job", "delete_mcp_server_job", "get_mcp_server_job_status"]
+def check_pod_status(core_v1: client.CoreV1Api, pod_name: str, namespace: str) -> bool:
+    """
+    Check the status of pods associated with a job.
+
+    Args:
+        core_v1: The Kubernetes core API client
+        pod_name: Name of the job/pod
+        namespace: Kubernetes namespace
+
+    Returns:
+        True if a pod is running and ready (probes successful), False if waiting for pods
+
+    Raises:
+        MCPJobError: If a pod is in Failed or Unknown state
+    """
+    pods = core_v1.list_namespaced_pod(namespace=namespace, label_selector=f"job-name={pod_name}")
+
+    if not pods.items:
+        logger.warning(f"No pods found for job '{pod_name}', waiting...")
+        return False
+
+    for pod in pods.items:
+        if pod.status and pod.status.phase:
+            if pod.status.phase in ["Failed", "Unknown"]:
+                raise MCPJobError(namespace, pod_name, f"Pod is in error state: {pod.status.phase}")
+            elif pod.status.phase == "Running":
+                # Check if the pod is also ready (probes successful)
+                is_ready = False
+                if pod.status.conditions:
+                    for condition in pod.status.conditions:
+                        if condition.type == "Ready" and condition.status == "True":
+                            is_ready = True
+                            break
+
+                if is_ready:
+                    logger.info(f"Job '{pod_name}' pod is running and ready (probes successful)")
+                    return True
+                else:
+                    logger.info(f"Job '{pod_name}' pod is running but not ready yet (waiting for probes)")
+
+    return False
+
+
+def wait_for_job_ready(
+    batch_v1: client.BatchV1Api,
+    core_v1: client.CoreV1Api,
+    pod_name: str,
+    namespace: str,
+    sleep_time: float = 1,
+    max_wait_time: float = 60,
+) -> None:
+    """
+    Wait for a job's pod to be in the running state and ready (probes successful).
+
+    Args:
+        batch_v1: The Kubernetes batch API client
+        core_v1: The Kubernetes core API client
+        pod_name: Name of the pod
+        namespace: Kubernetes namespace
+        sleep_time: Time to sleep between checks
+        max_wait_time: Maximum time to wait before timing out
+
+    Raises:
+        MCPJobTimeoutError: If the job does not become ready within max_wait_time
+    """
+    start_time = time.time()
+    while True:
+        if time.time() - start_time > max_wait_time:
+            raise MCPJobTimeoutError(namespace, pod_name)
+
+        job = get_mcp_server_job_status(batch_v1, pod_name, namespace)
+        if job is None:
+            logger.warning(f"Job '{pod_name}' not found, waiting for pod to become ready...")
+            time.sleep(sleep_time)
+            continue
+
+        if job.status is None:
+            logger.warning(f"Job '{pod_name}' status is None, waiting for pod to become ready...")
+            time.sleep(sleep_time)
+            continue
+
+        # Check if any pod is in running state and ready
+        if check_pod_status(core_v1, pod_name, namespace):
+            break
+
+        if job.status.active == 1:
+            logger.info(f"Job '{pod_name}' active")
+        else:
+            logger.warning(f"Job '{pod_name}' in unknown state, waiting...")
+
+        time.sleep(sleep_time)
+
+
+def wait_for_job_deletion(
+    batch_v1: client.BatchV1Api, pod_name: str, namespace: str, sleep_time: float = 1, max_wait_time: float = 60
+) -> None:
+    """
+    Wait for a job to be deleted.
+
+    Args:
+        batch_v1: The Kubernetes batch API client
+        pod_name: Name of the pod
+        namespace: Kubernetes namespace
+        sleep_time: Time to sleep between checks
+        max_wait_time: Maximum time to wait before timing out
+
+    Raises:
+        MCPJobTimeoutError: If the job is not deleted within max_wait_time
+    """
+    start_time = time.time()
+    while True:
+        if time.time() - start_time > max_wait_time:
+            raise MCPJobTimeoutError(namespace, pod_name)
+        if get_mcp_server_job_status(batch_v1, pod_name, namespace) is None:
+            break
+        time.sleep(sleep_time)
+
+
+def expose_mcp_server_port(core_v1: client.CoreV1Api, pod_name: str, namespace: str, port: int) -> None:
+    """
+    Expose the MCP server port to the outside world.
+
+    Args:
+        core_v1: The Kubernetes core API client
+        pod_name: Name of the pod
+        namespace: Kubernetes namespace
+        port: Port to expose
+    """
+    core_v1.create_namespaced_service(
+        namespace=namespace,
+        body=client.V1Service(
+            metadata=client.V1ObjectMeta(name=pod_name),
+            spec=client.V1ServiceSpec(
+                selector={"app": pod_name},
+                ports=[client.V1ServicePort(port=port)],
+            ),
+        ),
+    )
+    logger.info(f"Service '{pod_name}' created successfully")
+
+
+def remove_mcp_server_port(core_v1: client.CoreV1Api, pod_name: str, namespace: str) -> None:
+    """
+    Remove the MCP server port from the outside world.
+
+    Args:
+        core_v1: The Kubernetes core API client
+        pod_name: Name of the pod
+        namespace: Kubernetes namespace
+    """
+    core_v1.delete_namespaced_service(name=pod_name, namespace=namespace)
+    logger.info(f"Service '{pod_name}' deleted successfully")
+
+
+__all__ = [
+    "check_pod_status",
+    "create_mcp_server_job",
+    "delete_mcp_server_job",
+    "expose_mcp_server_port",
+    "get_mcp_server_job_status",
+    "remove_mcp_server_port",
+    "wait_for_job_deletion",
+    "wait_for_job_ready",
+]

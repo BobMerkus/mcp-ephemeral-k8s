@@ -49,10 +49,10 @@ jobs:
           cluster_name: kind-chart-testing
 
       - name: Docker build the proxy
-        run: docker build -t mcp-ephemeral-k8s-proxy:latest -f dockerfiles/mcp-epheremal-proxy/Dockerfile .
+        run: docker build -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest -f dockerfiles/mcp-epheremal-proxy/Dockerfile .
 
       - name: Load the proxy image into the cluster
-        run: kind load docker-image mcp-ephemeral-k8s-proxy:latest --name kind-chart-testing
+        run: kind load docker-image ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --name kind-chart-testing
 
       - name: Run tests
         run: uv run python -m pytest tests --cov --cov-config=pyproject.toml --cov-report=xml

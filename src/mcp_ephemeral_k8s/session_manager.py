@@ -4,6 +4,7 @@ It is used to create and manage MCP servers in a Kubernetes cluster.
 """
 
 import logging
+import os
 from typing import Any, Self
 
 from kubernetes import client
@@ -14,9 +15,22 @@ from kubernetes.config.incluster_config import load_incluster_config
 from kubernetes.config.kube_config import load_kube_config
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
-from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServer, EphemeralMcpServerConfig
-from mcp_ephemeral_k8s.api.exceptions import MCPJobNotFoundError, MCPServerCreationError
-from mcp_ephemeral_k8s.k8s.job import create_mcp_server_job, delete_mcp_server_job, get_mcp_server_job_status
+from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServer, EphemeralMcpServerConfig, KubernetesRuntime
+from mcp_ephemeral_k8s.api.exceptions import (
+    InvalidKubeConfigError,
+    MCPJobNotFoundError,
+    MCPServerCreationError,
+)
+from mcp_ephemeral_k8s.k8s.job import (
+    check_pod_status,
+    create_mcp_server_job,
+    delete_mcp_server_job,
+    expose_mcp_server_port,
+    get_mcp_server_job_status,
+    remove_mcp_server_port,
+    wait_for_job_deletion,
+    wait_for_job_ready,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +50,11 @@ class KubernetesSessionManager(BaseModel):
         default_factory=dict,
         description="A dictionary mapping between pod names and MCP servers jobs that are running.",
     )
+    runtime: KubernetesRuntime = Field(
+        default=KubernetesRuntime.KUBECONFIG, description="The runtime to use for the MCP server"
+    )
+    sleep_time: float = Field(default=1, description="The time to sleep between job status checks")
+    max_wait_time: float = Field(default=60, description="The maximum time to wait for a job to complete")
     _api_client: ApiClient = PrivateAttr()
     _batch_v1: BatchV1Api = PrivateAttr()
     _core_v1: CoreV1Api = PrivateAttr()
@@ -53,14 +72,24 @@ class KubernetesSessionManager(BaseModel):
 
     def _load_kube_config(self) -> None:
         """Load Kubernetes configuration from default location or from service account if running in cluster."""
-        try:
-            # Try to load from default config file
-            load_kube_config()
-            logger.info("Using local kubernetes configuration")
-        except Exception:
-            # If that fails, we might be running in a pod, so try to use service account
+        if self.runtime == KubernetesRuntime.KUBECONFIG:
+            try:
+                load_kube_config(
+                    config_file=os.environ.get("KUBECONFIG"),
+                    context=os.environ.get("KUBECONTEXT"),
+                    client_configuration=None,
+                    persist_config=False,
+                )
+                logger.info("Using local kubernetes configuration")
+                return  # noqa: TRY300
+            except Exception:
+                logger.warning("Failed to load local kubernetes configuration, trying in-cluster configuration")
+                self.runtime = KubernetesRuntime.INCLUSTER
+        if self.runtime == KubernetesRuntime.INCLUSTER:
             load_incluster_config()
             logger.info("Using in-cluster kubernetes configuration")
+            return
+        raise InvalidKubeConfigError(self.runtime)
 
     def __enter__(self) -> Self:
         """Enter the context manager."""
@@ -95,6 +124,41 @@ class KubernetesSessionManager(BaseModel):
             raise MCPServerCreationError(str(response.metadata))
         return EphemeralMcpServer(config=config, pod_name=response.metadata.name)
 
+    def _get_job_status(self, pod_name: str) -> None | client.V1Job:
+        """
+        Get current status of a job.
+
+        Args:
+            pod_name: Name of the pod
+
+        Returns:
+            The job status
+        """
+        return get_mcp_server_job_status(self._batch_v1, pod_name, self.namespace)
+
+    def _check_pod_status(self, pod_name: str) -> bool:
+        """
+        Check the status of pods associated with a job.
+
+        Args:
+            pod_name: Name of the job/pod
+
+        Returns:
+            True if a pod is running and ready (probes successful), False if waiting for pods
+
+        Raises:
+            MCPJobError: If a pod is in Failed or Unknown state
+        """
+        return check_pod_status(self._core_v1, pod_name, self.namespace)
+
+    def _wait_for_job_ready(self, pod_name: str) -> None:
+        """Wait for a job's pod to be in the running state and ready (probes successful)."""
+        wait_for_job_ready(self._batch_v1, self._core_v1, pod_name, self.namespace, self.sleep_time, self.max_wait_time)
+
+    def _wait_for_job_deletion(self, pod_name: str) -> None:
+        """Wait for a job to be deleted."""
+        wait_for_job_deletion(self._batch_v1, pod_name, self.namespace, self.sleep_time, self.max_wait_time)
+
     def _delete_job(self, pod_name: str) -> bool:
         """
         Delete a Kubernetes job and its associated pods.
@@ -108,54 +172,32 @@ class KubernetesSessionManager(BaseModel):
         """
         return delete_mcp_server_job(self._core_v1, self._batch_v1, pod_name, self.namespace)
 
-    def get_job_status(self, pod_name: str) -> None | client.V1Job:
-        """
-        Get current status of a job.
-
-        Args:
-            pod_name: Name of the pod
-
-        Returns:
-            The job status
-        """
-        job = get_mcp_server_job_status(self._batch_v1, pod_name, self.namespace)
-        if job is None:
-            raise MCPJobNotFoundError(self.namespace, pod_name)
-        return job
-
-    def create_mcp_server(self, config: EphemeralMcpServerConfig) -> EphemeralMcpServer:
+    def create_mcp_server(self, config: EphemeralMcpServerConfig, wait_for_ready: bool = True) -> EphemeralMcpServer:
         """Start a new MCP server using the provided configuration."""
         mcp_server = self._create_job(config)
         self.jobs[mcp_server.pod_name] = mcp_server
+        if wait_for_ready:
+            self._wait_for_job_ready(mcp_server.pod_name)
         return mcp_server
 
-    def delete_mcp_server(self, name: str) -> EphemeralMcpServer:
+    def delete_mcp_server(self, name: str, wait_for_deletion: bool = True) -> EphemeralMcpServer:
         """Delete the MCP server."""
         if name in self.jobs:
             job = self.jobs[name]
             self._delete_job(name)
             del self.jobs[name]
+            if wait_for_deletion:
+                self._wait_for_job_deletion(name)
             return job
         raise MCPJobNotFoundError(self.namespace, name)
 
     def expose_mcp_server_port(self, mcp_server: EphemeralMcpServer) -> None:
         """Expose the MCP server port to the outside world."""
-        self._core_v1.create_namespaced_service(
-            namespace=self.namespace,
-            body=client.V1Service(
-                metadata=client.V1ObjectMeta(name=mcp_server.pod_name),
-                spec=client.V1ServiceSpec(
-                    selector={"app": mcp_server.pod_name},
-                    ports=[client.V1ServicePort(port=mcp_server.config.port)],
-                ),
-            ),
-        )
-        logger.info(f"Service '{mcp_server.pod_name}' created successfully")
+        expose_mcp_server_port(self._core_v1, mcp_server.pod_name, self.namespace, mcp_server.config.port)
 
     def remove_mcp_server_port(self, mcp_server: EphemeralMcpServer) -> None:
         """Remove the MCP server port from the outside world."""
-        self._core_v1.delete_namespaced_service(name=mcp_server.pod_name, namespace=self.namespace)
-        logger.info(f"Service '{mcp_server.pod_name}' deleted successfully")
+        remove_mcp_server_port(self._core_v1, mcp_server.pod_name, self.namespace)
 
 
 __all__ = ["KubernetesSessionManager"]

@@ -17,8 +17,8 @@ classifiers = [
 ]
 dependencies = [
     "fastapi[standard]>=0.115.12",
+    "fastmcp>=2.2.7",
     "kubernetes>=32.0.1",
-    "mcp>=1.7.1",
     "pydantic>=2.11.4",
 ]
 
@@ -28,8 +28,7 @@ Repository = "https://github.com/BobMerkus/mcp-ephemeral-k8s"
 Documentation = "https://BobMerkus.github.io/mcp-ephemeral-k8s/"
 
 [project.scripts]
-mcp-ephemeral-k8s-mcp = "mcp_ephemeral_k8s.app.mcp:main"
-mcp-ephemeral-k8s-fastapi = "mcp_ephemeral_k8s.app.fastapi:app"
+mcp-ephemeral-k8s = "mcp_ephemeral_k8s.app.mcp:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -44,10 +43,6 @@ check_untyped_defs = true
 warn_return_any = true
 warn_unused_ignores = true
 show_error_codes = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-asyncio_default_fixture_loop_scope = "module"
 
 [tool.ruff]
 target-version = "py313"
