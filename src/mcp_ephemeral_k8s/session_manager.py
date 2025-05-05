@@ -4,6 +4,7 @@ It is used to create and manage MCP servers in a Kubernetes cluster.
 """
 
 import logging
+import os
 from typing import Any, Self
 
 from kubernetes import client
@@ -14,8 +15,9 @@ from kubernetes.config.incluster_config import load_incluster_config
 from kubernetes.config.kube_config import load_kube_config
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
-from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServer, EphemeralMcpServerConfig
+from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServer, EphemeralMcpServerConfig, KubernetesRuntime
 from mcp_ephemeral_k8s.api.exceptions import (
+    InvalidKubeConfigError,
     MCPJobNotFoundError,
     MCPServerCreationError,
 )
@@ -48,6 +50,9 @@ class KubernetesSessionManager(BaseModel):
         default_factory=dict,
         description="A dictionary mapping between pod names and MCP servers jobs that are running.",
     )
+    runtime: KubernetesRuntime = Field(
+        default=KubernetesRuntime.KUBECONFIG, description="The runtime to use for the MCP server"
+    )
     sleep_time: float = Field(default=1, description="The time to sleep between job status checks")
     max_wait_time: float = Field(default=60, description="The maximum time to wait for a job to complete")
     _api_client: ApiClient = PrivateAttr()
@@ -67,14 +72,24 @@ class KubernetesSessionManager(BaseModel):
 
     def _load_kube_config(self) -> None:
         """Load Kubernetes configuration from default location or from service account if running in cluster."""
-        try:
-            # Try to load from default config file
-            load_kube_config()
-            logger.info("Using local kubernetes configuration")
-        except Exception:
-            # If that fails, we might be running in a pod, so try to use service account
+        if self.runtime == KubernetesRuntime.KUBECONFIG:
+            try:
+                load_kube_config(
+                    config_file=os.environ.get("KUBECONFIG"),
+                    context=os.environ.get("KUBECONTEXT"),
+                    client_configuration=None,
+                    persist_config=False,
+                )
+                logger.info("Using local kubernetes configuration")
+                return  # noqa: TRY300
+            except Exception:
+                logger.warning("Failed to load local kubernetes configuration, trying in-cluster configuration")
+                self.runtime = KubernetesRuntime.INCLUSTER
+        if self.runtime == KubernetesRuntime.INCLUSTER:
             load_incluster_config()
             logger.info("Using in-cluster kubernetes configuration")
+            return
+        raise InvalidKubeConfigError(self.runtime)
 
     def __enter__(self) -> Self:
         """Enter the context manager."""

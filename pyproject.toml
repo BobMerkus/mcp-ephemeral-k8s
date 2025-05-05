@@ -17,8 +17,8 @@ classifiers = [
 ]
 dependencies = [
     "fastapi[standard]>=0.115.12",
+    "fastmcp>=2.2.7",
     "kubernetes>=32.0.1",
-    "mcp>=1.7.1",
     "pydantic>=2.11.4",
 ]
 
