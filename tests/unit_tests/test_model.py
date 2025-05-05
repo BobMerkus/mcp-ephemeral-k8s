@@ -28,8 +28,8 @@ def test_model_default_values():
     assert mcp_server_config.resource_requests == {"cpu": "100m", "memory": "100Mi"}
     assert mcp_server_config.resource_limits == {"cpu": "200m", "memory": "200Mi"}
     assert mcp_server_config.env is None
-    assert mcp_server_config.image_name == "mcp-ephemeral-proxy"
-    assert mcp_server_config.job_name.startswith("mcp-ephemeral-proxy")
+    assert mcp_server_config.image_name == "mcp-ephemeral-k8s-proxy"
+    assert mcp_server_config.job_name.startswith("mcp-ephemeral-k8s-proxy")
 
     mcp_server = EphemeralMcpServer(config=mcp_server_config, pod_name="mcp-proxy-pod")
     assert mcp_server.url == HttpUrl(f"http://{mcp_server.pod_name}:{mcp_server.config.port}")

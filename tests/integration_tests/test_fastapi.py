@@ -29,7 +29,7 @@ def test_create_mcp_server():
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["pod_name"].startswith("mcp-ephemeral-proxy")
+        assert body["pod_name"].startswith("mcp-ephemeral-k8s-proxy")
         assert body["config"]["runtime_exec"] == "uvx"
         assert body["config"]["runtime_mcp"] == "mcp-server-fetch"
         assert body["config"]["env"] == {"MCP_SERVER_PORT": "8080"}
@@ -44,7 +44,7 @@ def test_delete_mcp_server():
         )
         assert create_response.status_code == 200
         body = create_response.json()
-        assert body["pod_name"].startswith("mcp-ephemeral-proxy")
+        assert body["pod_name"].startswith("mcp-ephemeral-k8s-proxy")
         assert body["config"]["runtime_exec"] == "uvx"
         assert body["config"]["runtime_mcp"] == "mcp-server-fetch"
         assert body["config"]["env"] == {"MCP_SERVER_PORT": "8080"}
@@ -57,5 +57,5 @@ def test_delete_mcp_server():
 @pytest.mark.integration
 def test_delete_mcp_server_not_found():
     with TestClient(app) as client:
-        response = client.post("/delete_mcp_server", json={"name": "mcp-ephemeral-proxy-job"})
+        response = client.post("/delete_mcp_server", json={"name": "mcp-ephemeral-k8s-proxy-job"})
         assert response.status_code == 404, "The server should not be found, as it was not created"

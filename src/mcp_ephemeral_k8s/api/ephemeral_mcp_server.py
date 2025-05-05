@@ -97,7 +97,7 @@ class EphemeralMcpServer(BaseModel):
 
     config: EphemeralMcpServerConfig = Field(description="The configuration that was used to create the MCP server")
     pod_name: str = Field(
-        description="The name of the pod that is running the MCP server", examples=["mcp-ephemeral-proxy-test"]
+        description="The name of the pod that is running the MCP server", examples=["mcp-ephemeral-k8s-proxy-test"]
     )
 
     @computed_field  # type: ignore[prop-decorator]

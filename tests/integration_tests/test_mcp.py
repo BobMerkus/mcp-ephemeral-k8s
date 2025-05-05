@@ -37,7 +37,7 @@ async def test_tool_functionality(mcp_server):
         assert result is not None
         data: TextContent = result[0]
         body = EphemeralMcpServer.model_validate_json(data.text)
-        assert body.pod_name.startswith("mcp-ephemeral-proxy")
+        assert body.pod_name.startswith("mcp-ephemeral-k8s-proxy")
         assert body.config.runtime_exec == "uvx"
         assert body.config.runtime_mcp == "mcp-server-fetch"
         assert body.config.env == {"MCP_SERVER_PORT": "8080"}
