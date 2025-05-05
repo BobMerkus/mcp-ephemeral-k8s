@@ -6,9 +6,8 @@ from contextlib import asynccontextmanager
 from fastmcp import Context, FastMCP
 from kubernetes import client
 
-from mcp_ephemeral_k8s import __version__
+from mcp_ephemeral_k8s import KubernetesSessionManager, __version__, presets
 from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServer, EphemeralMcpServerConfig
-from mcp_ephemeral_k8s.session_manager import KubernetesSessionManager
 
 
 @asynccontextmanager
@@ -27,6 +26,12 @@ mcp = FastMCP(name="mcp-ephemeral-k8s", lifespan=lifespan)
 @mcp.resource("config://version")
 def get_version() -> str:
     return __version__
+
+
+# Preset configurations
+@mcp.resource("config://presets")
+def list_presets() -> list[EphemeralMcpServerConfig]:
+    return [presets.FETCH, presets.GITHUB, presets.GITLAB, presets.GIT, presets.TIME, presets.BEDROCK_KB_RETRIEVAL]
 
 
 @mcp.tool("list_mcp_servers")
