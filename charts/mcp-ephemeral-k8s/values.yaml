@@ -19,7 +19,7 @@ rbac:
   # Specifies whether RBAC resources should be created
   create: true
   # Specifies whether to use ClusterRole/ClusterRoleBinding instead of Role/RoleBinding
-  clusterWide: false
+  clusterWide: true
 
 serviceAccount:
   # Specifies whether a service account should be created
