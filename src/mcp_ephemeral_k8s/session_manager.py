@@ -19,6 +19,7 @@ from mcp_ephemeral_k8s.api.ephemeral_mcp_server import EphemeralMcpServer, Ephem
 from mcp_ephemeral_k8s.api.exceptions import (
     InvalidKubeConfigError,
     MCPJobNotFoundError,
+    MCPNamespaceNotFoundError,
     MCPServerCreationError,
 )
 from mcp_ephemeral_k8s.k8s.job import (
@@ -68,6 +69,10 @@ class KubernetesSessionManager(BaseModel):
             self._batch_v1 = BatchV1Api(self._api_client)
         if not hasattr(self, "_core_v1"):
             self._core_v1 = CoreV1Api(self._api_client)
+        # check if the configured namespace exists
+        namespaces = self._core_v1.list_namespace().items
+        if self.namespace not in [namespace.metadata.name for namespace in namespaces if namespace.metadata]:
+            raise MCPNamespaceNotFoundError(self.namespace)
         return self
 
     def _load_kube_config(self) -> None:

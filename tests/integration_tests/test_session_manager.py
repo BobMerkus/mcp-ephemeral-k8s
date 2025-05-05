@@ -1,6 +1,7 @@
 import pytest
 
-from mcp_ephemeral_k8s.integrations.presets import BEDROCK_KB_RETRIEVAL, FETCH, GIT, GITHUB, GITLAB
+from mcp_ephemeral_k8s.api.exceptions import MCPNamespaceNotFoundError
+from mcp_ephemeral_k8s.integrations.presets import BEDROCK_KB_RETRIEVAL, FETCH, GIT, GITHUB, GITLAB, TIME
 from mcp_ephemeral_k8s.session_manager import KubernetesSessionManager
 
 
@@ -20,6 +21,26 @@ def test_session_manager_creation_with_context_manager():
         assert hasattr(session_manager, "_api_client")
         assert hasattr(session_manager, "_batch_v1")
         assert hasattr(session_manager, "_core_v1")
+
+
+@pytest.mark.integration
+def test_session_manager_creation_with_valid_namespace():
+    with KubernetesSessionManager(namespace="default"):
+        pass
+
+
+@pytest.mark.integration
+def test_session_manager_invalid_namespace():
+    with pytest.raises(MCPNamespaceNotFoundError), KubernetesSessionManager(namespace="invalid-namespace"):
+        pass
+
+
+@pytest.mark.integration
+def test_session_manager_start_mcp_server_time():
+    with KubernetesSessionManager() as session_manager:
+        mcp_server = session_manager.create_mcp_server(TIME, wait_for_ready=True)
+        assert mcp_server is not None
+        assert mcp_server.pod_name is not None
 
 
 @pytest.mark.integration
