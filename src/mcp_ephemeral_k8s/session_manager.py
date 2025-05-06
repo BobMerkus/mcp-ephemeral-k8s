@@ -55,7 +55,7 @@ class KubernetesSessionManager(BaseModel):
         default=KubernetesRuntime.KUBECONFIG, description="The runtime to use for the MCP server"
     )
     sleep_time: float = Field(default=1, description="The time to sleep between job status checks")
-    max_wait_time: float = Field(default=60, description="The maximum time to wait for a job to complete")
+    max_wait_time: float = Field(default=300, description="The maximum time to wait for a job to complete")
     _api_client: ApiClient = PrivateAttr()
     _batch_v1: BatchV1Api = PrivateAttr()
     _core_v1: CoreV1Api = PrivateAttr()

@@ -149,7 +149,7 @@ def get_mcp_server_job_status(batch_v1: client.BatchV1Api, pod_name: str, namesp
         return job
 
 
-def check_pod_status(core_v1: client.CoreV1Api, pod_name: str, namespace: str) -> bool:
+def check_pod_status(core_v1: client.CoreV1Api, pod_name: str, namespace: str) -> bool:  # noqa: C901
     """
     Check the status of pods associated with a job.
 
@@ -165,17 +165,21 @@ def check_pod_status(core_v1: client.CoreV1Api, pod_name: str, namespace: str) -
         MCPJobError: If a pod is in Failed or Unknown state
     """
     pods = core_v1.list_namespaced_pod(namespace=namespace, label_selector=f"job-name={pod_name}")
-
     if not pods.items:
         logger.warning(f"No pods found for job '{pod_name}', waiting...")
         return False
-
     for pod in pods.items:
         if pod.status and pod.status.phase:
             if pod.status.phase in ["Failed", "Unknown"]:
-                raise MCPJobError(namespace, pod_name, f"Pod is in error state: {pod.status.phase}")
+                if pod.metadata is not None and pod.metadata.name is not None:
+                    logs = core_v1.read_namespaced_pod_log(name=pod.metadata.name, namespace=namespace)
+                    logger.error(f"Pod {pod.metadata.name} in error state: {pod.status.phase}")
+                    logger.error(f"Logs: {logs}")
+                    message = f"Pod is in error state: {pod.status.phase}. Logs: {logs}"
+                else:
+                    message = f"Pod is in error state: {pod.status.phase}"
+                raise MCPJobError(namespace, pod_name, message)
             elif pod.status.phase == "Running":
-                # Check if the pod is also ready (probes successful)
                 is_ready = False
                 if pod.status.conditions:
                     for condition in pod.status.conditions:
@@ -188,7 +192,6 @@ def check_pod_status(core_v1: client.CoreV1Api, pod_name: str, namespace: str) -
                     return True
                 else:
                     logger.info(f"Job '{pod_name}' pod is running but not ready yet (waiting for probes)")
-
     return False
 
 
