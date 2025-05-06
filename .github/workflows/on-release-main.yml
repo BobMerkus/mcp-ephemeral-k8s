@@ -116,7 +116,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: dockerfiles/mcp-epheremal-proxy/Dockerfile
+          file: dockerfiles/mcp-ephemeral-proxy/Dockerfile
           push: true
           tags: ${{ steps.meta-proxy.outputs.tags }}
           labels: ${{ steps.meta-proxy.outputs.labels }}

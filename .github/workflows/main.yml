@@ -53,7 +53,7 @@ jobs:
           cluster_name: kind-chart-testing
 
       - name: Docker build the proxy
-        run: docker build -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest -f dockerfiles/mcp-epheremal-proxy/Dockerfile .
+        run: docker build -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest -f dockerfiles/mcp-ephemeral-proxy/Dockerfile .
 
       - name: Load the proxy image into the cluster
         run: kind load docker-image ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --name kind-chart-testing
@@ -128,7 +128,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: dockerfiles/mcp-epheremal-proxy/Dockerfile
+          file: dockerfiles/mcp-ephemeral-proxy/Dockerfile
           push: false
           tags: ${{ steps.meta-proxy.outputs.tags }}
           labels: ${{ steps.meta-proxy.outputs.labels }}

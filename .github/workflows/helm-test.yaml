@@ -68,7 +68,7 @@ jobs:
 
       - name: Build proxy image
         if: steps.list-changed.outputs.changed == 'true'
-        run: docker build -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:${{ steps.get-chart-version.outputs.app_version }} -f dockerfiles/mcp-epheremal-proxy/Dockerfile . --load
+        run: docker build -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:${{ steps.get-chart-version.outputs.app_version }} -f dockerfiles/mcp-ephemeral-proxy/Dockerfile . --load
 
       - name: Load images into kind cluster
         if: steps.list-changed.outputs.changed == 'true'
