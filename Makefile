@@ -43,12 +43,12 @@ docker-build-local: ## Build the docker image locally
 .PHONY: docker-build-proxy
 docker-build-proxy: ## Build the docker image proxy
 	@echo "🚀 Building docker image"
-	@docker buildx build . --file dockerfiles/mcp-ephemeral-proxy/Dockerfile -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --push
+	@docker buildx build . --file dockerfiles/mcp-ephemeral-k8s-proxy/Dockerfile -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --push
 
 .PHONY: docker-build-local-proxy
 docker-build-local-proxy: ## Build the docker image proxy locally
 	@echo "🚀 Building docker image"
-	@docker buildx build . --file dockerfiles/mcp-ephemeral-proxy/Dockerfile -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --load
+	@docker buildx build . --file dockerfiles/mcp-ephemeral-k8s-proxy/Dockerfile -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --load
 
 .PHONY: publish
 publish: ## Publish a release to PyPI.

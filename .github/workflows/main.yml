@@ -42,23 +42,34 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
+      - name: Clean up docker storage
+        run: docker system prune -f
+
       - name: Set up the environment
         uses: ./.github/actions/setup-python-env
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Create k8s Kind Cluster
+        if: ${{ matrix.python-version == '3.13' }}
         uses: helm/kind-action@v1
         with:
           cluster_name: kind-chart-testing
 
       - name: Docker build the proxy
-        run: docker build -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest -f dockerfiles/mcp-ephemeral-proxy/Dockerfile .
+        if: ${{ matrix.python-version == '3.13' }}
+        run: docker build -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest -f dockerfiles/mcp-ephemeral-k8s-proxy/Dockerfile .
 
       - name: Load the proxy image into the cluster
+        if: ${{ matrix.python-version == '3.13' }}
         run: kind load docker-image ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --name kind-chart-testing
 
-      - name: Run tests
+      - name: Run tests (unit only)
+        if: ${{ matrix.python-version != '3.13' }}
+        run: uv run python -m pytest -m unit tests --cov --cov-config=pyproject.toml --cov-report=xml
+
+      - name: Run tests (unit and integration)
+        if: ${{ matrix.python-version == '3.13' }}
         run: uv run python -m pytest tests --cov --cov-config=pyproject.toml --cov-report=xml
 
       - name: Check typing
@@ -128,7 +139,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: dockerfiles/mcp-ephemeral-proxy/Dockerfile
+          file: dockerfiles/mcp-ephemeral-k8s-proxy/Dockerfile
           push: false
           tags: ${{ steps.meta-proxy.outputs.tags }}
           labels: ${{ steps.meta-proxy.outputs.labels }}

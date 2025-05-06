@@ -55,7 +55,7 @@ class KubernetesSessionManager(BaseModel):
         default=KubernetesRuntime.KUBECONFIG, description="The runtime to use for the MCP server"
     )
     sleep_time: float = Field(default=1, description="The time to sleep between job status checks")
-    max_wait_time: float = Field(default=60, description="The maximum time to wait for a job to complete")
+    max_wait_time: float = Field(default=300, description="The maximum time to wait for a job to complete")
     _api_client: ApiClient = PrivateAttr()
     _batch_v1: BatchV1Api = PrivateAttr()
     _core_v1: CoreV1Api = PrivateAttr()
@@ -184,7 +184,7 @@ class KubernetesSessionManager(BaseModel):
         return delete_mcp_server_job(self._core_v1, self._batch_v1, pod_name, self.namespace)
 
     def create_mcp_server(
-        self, config: EphemeralMcpServerConfig, wait_for_ready: bool = True, expose_port: bool = True
+        self, config: EphemeralMcpServerConfig, wait_for_ready: bool = True, expose_port: bool = False
     ) -> EphemeralMcpServer:
         """Start a new MCP server using the provided configuration.
 
