@@ -6,69 +6,139 @@
 [![Commit activity](https://img.shields.io/github/commit-activity/m/BobMerkus/mcp-ephemeral-k8s)](https://img.shields.io/github/commit-activity/m/BobMerkus/mcp-ephemeral-k8s)
 [![License](https://img.shields.io/github/license/BobMerkus/mcp-ephemeral-k8s)](https://img.shields.io/github/license/BobMerkus/mcp-ephemeral-k8s)
 
-Python implementation to spawn ephemeral Model Context Protocol (MCP) servers using the kubernetes API.
+A Python library for spawning ephemeral Model Context Protocol (MCP) servers on Kubernetes using Server-Sent Events (SSE).
 
-- **Github repository**: <https://github.com/BobMerkus/mcp-ephemeral-k8s/>
-- **Documentation** <https://BobMerkus.github.io/mcp-ephemeral-k8s/>
+- **Github**: <https://github.com/BobMerkus/mcp-ephemeral-k8s/>
+- **Documentation**: <https://BobMerkus.github.io/mcp-ephemeral-k8s/>
 
-## Getting started with your project
+## Features
 
-### 1. Create a New Repository
+- Supports multiple runtimes:
+  - Node.js (via `npx`)
+  - Python (via `uvx`)
+- Works with [mcp-proxy](https://github.com/sparfenyuk/mcp-proxy) for `uvx` or `npx` runtimes
+- Supports both local kubeconfig and in-cluster configuration
+- Can be run as MCP server
+- Can be run as FastAPI server
 
-First, create a repository on GitHub with the same name as this project, and then run the following commands:
+## Usage
 
-```bash
-git init -b main
-git add .
-git commit -m "init commit"
-git remote add origin git@github.com:BobMerkus/mcp-ephemeral-k8s.git
-git push -u origin main
-```
-
-### 2. Set Up Your Development Environment
-
-Then, install the environment and the pre-commit hooks with
+### Running the MCP Server
 
 ```bash
-make install
+uvx mcp-ephemeral-k8s
 ```
 
-This will also generate your `uv.lock` file
+### Using the Library
 
-### 3. Run the pre-commit hooks
+```python
+from mcp_ephemeral_k8s import KubernetesSessionManager, presets
 
-Initially, the CI/CD pipeline might be failing due to formatting issues. To resolve those run:
+with KubernetesSessionManager() as session_manager:
+    mcp_server = session_manager.create_mcp_server(presets.GITHUB, wait_for_ready=True)
+    print(mcp_server.sse_url)
+```
+
+## Installation
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/)
+- [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/) or any Kubernetes cluster with valid `kubectl` configuration
+
+### Option 1: Using `uvx` (Recommended)
 
 ```bash
-uv run pre-commit run -a
+uvx mcp-ephemeral-k8s
 ```
 
-### 4. Commit the changes
+To connect to the MCP server, use the following config:
+```json
+{
+   "mcp-ephemeral-k8s": {
+      "url": "http://localhost:8000/sse",
+      "transport": "sse"
+   }
+}
+```
 
-Lastly, commit the changes made by the two steps above to your repository.
+### Option 2: As a Python Package
 
 ```bash
-git add .
-git commit -m 'Fix formatting issues'
-git push origin main
+pip install mcp-ephemeral-k8s
+mcp-ephemeral-k8s
 ```
 
-You are now ready to start development on your project!
-The CI/CD pipeline will be triggered when you open a pull request, merge to main, or when you create a new release.
+### Option 3: Using Helm Chart
+To install the Helm chart, run:
 
-To finalize the set-up for publishing to PyPI, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/publishing/#set-up-for-pypi).
-For activating the automatic documentation with MkDocs, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/mkdocs/#enabling-the-documentation-on-github).
-To enable the code coverage reports, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/codecov/).
+```bash
+helm repo add mcp-ephemeral-k8s https://BobMerkus.github.io/mcp-ephemeral-k8s/
+helm repo update
+helm install mcp-ephemeral-k8s mcp-ephemeral-k8s/mcp-ephemeral-k8s
+```
 
-## Releasing a new version
+To upgrade the Helm chart, run:
+```bash
+helm upgrade -i mcp-ephemeral-k8s mcp-ephemeral-k8s/mcp-ephemeral-k8s
+```
 
-- Create an API Token on [PyPI](https://pypi.org/).
-- Add the API Token to your projects secrets with the name `PYPI_TOKEN` by visiting [this page](https://github.com/BobMerkus/mcp-ephemeral-k8s/settings/secrets/actions/new).
-- Create a [new release](https://github.com/BobMerkus/mcp-ephemeral-k8s/releases/new) on Github.
-- Create a new tag in the form `*.*.*`.
+To install a specific version, run:
+```bash
+helm install mcp-ephemeral-k8s mcp-ephemeral-k8s/mcp-ephemeral-k8s --version <replace-with-version>
+```
 
-For more details, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/cicd/#how-to-trigger-a-release).
+To uninstall the Helm chart, run:
+```bash
+helm uninstall mcp-ephemeral-k8s
+```
 
----
+### Option 4: From Source
 
-Repository initiated with [fpgmaas/cookiecutter-uv](https://github.com/fpgmaas/cookiecutter-uv).
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/BobMerkus/mcp-ephemeral-k8s.git
+   cd mcp-ephemeral-k8s
+   ```
+
+2. **Set up development environment**
+   ```bash
+   make install
+   ```
+
+3. **Run pre-commit hooks**
+   ```bash
+   make check
+   ```
+
+4. **Run tests**
+   ```bash
+   make test
+   ```
+
+5. **Build Docker images**
+   ```bash
+   make docker-build-local
+   make docker-build-local-proxy
+   ```
+
+6. **Load images to cluster**
+   ```bash
+   kind load docker-image ghcr.io/bobmerkus/mcp-ephemeral-k8s:latest
+   kind load docker-image ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest
+   ```
+
+7. **Install Helm chart**
+   ```bash
+   helm upgrade -i mcp-ephemeral-k8s charts/mcp-ephemeral-k8s --set image.tag=latest
+   ```
+
+8. **Port forward the FastAPI server**
+   ```bash
+   kubectl port-forward svc/mcp-ephemeral-k8s 8000:8000
+   ```
+
+9. **Visit the FastAPI server**
+   ```bash
+   open http://localhost:8000/docs
+   ```
