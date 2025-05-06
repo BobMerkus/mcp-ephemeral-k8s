@@ -184,7 +184,7 @@ class KubernetesSessionManager(BaseModel):
         return delete_mcp_server_job(self._core_v1, self._batch_v1, pod_name, self.namespace)
 
     def create_mcp_server(
-        self, config: EphemeralMcpServerConfig, wait_for_ready: bool = True, expose_port: bool = True
+        self, config: EphemeralMcpServerConfig, wait_for_ready: bool = True, expose_port: bool = False
     ) -> EphemeralMcpServer:
         """Start a new MCP server using the provided configuration.
 
