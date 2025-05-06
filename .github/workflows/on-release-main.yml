@@ -90,13 +90,13 @@ jobs:
 
       - name: Extract metadata for main image
         id: meta-main
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Extract metadata for proxy image
         id: meta-proxy
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-proxy
 
