@@ -18,6 +18,16 @@ class KubernetesRuntime(str, Enum):
     INCLUSTER = "INCLUSTER"
 
 
+class KubernetesProbeConfig(BaseModel):
+    """The configuration for the Kubernetes probe."""
+
+    initial_delay_seconds: int = Field(default=10, description="The initial delay seconds for the probe")
+    period_seconds: int = Field(default=1, description="The period seconds for the probe")
+    timeout_seconds: int = Field(default=2, description="The timeout seconds for the probe")
+    success_threshold: int = Field(default=1, description="The success threshold for the probe")
+    failure_threshold: int = Field(default=30, description="The failure threshold for the probe")
+
+
 class EphemeralMcpServerConfig(BaseModel):
     """Configuration for Kubernetes resources."""
 
@@ -54,6 +64,10 @@ class EphemeralMcpServerConfig(BaseModel):
         default=["*"],
         description="The origins to allow CORS from",
         examples=["*"],
+    )
+    probe_config: KubernetesProbeConfig = Field(
+        default_factory=KubernetesProbeConfig,
+        description="The configuration for the Kubernetes probe",
     )
 
     @model_validator(mode="after")

@@ -48,11 +48,7 @@ def create_mcp_server_job(config: EphemeralMcpServerConfig, namespace: str) -> c
                             env=env_list,
                             readiness_probe=client.V1Probe(
                                 tcp_socket=client.V1TCPSocketAction(port=config.port),
-                                initial_delay_seconds=5,
-                                period_seconds=1,
-                                timeout_seconds=2,
-                                success_threshold=1,
-                                failure_threshold=10,
+                                **config.probe_config.model_dump(),
                             ),
                         )
                     ],
