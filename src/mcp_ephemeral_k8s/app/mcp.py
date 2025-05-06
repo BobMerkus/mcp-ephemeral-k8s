@@ -49,7 +49,7 @@ def create_mcp_server(
     runtime_exec: str,
     runtime_mcp: str,
     env: dict[str, str] | None = None,
-    wait_for_ready: bool = True,
+    wait_for_ready: bool = False,
 ) -> EphemeralMcpServer:
     """Create a new MCP server.
 
@@ -65,7 +65,7 @@ def create_mcp_server(
 
 
 @mcp.tool("delete_mcp_server")
-def delete_mcp_server(ctx: Context, pod_name: str, wait_for_deletion: bool = True) -> EphemeralMcpServer:
+def delete_mcp_server(ctx: Context, pod_name: str, wait_for_deletion: bool = False) -> EphemeralMcpServer:
     """Delete an MCP server.
 
     Args:
