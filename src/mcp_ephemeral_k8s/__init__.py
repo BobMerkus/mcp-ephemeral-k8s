@@ -1,6 +1,8 @@
-__version__ = "0.0.1"
+import importlib.metadata
+
+__version__ = importlib.metadata.version("mcp-ephemeral-k8s")
 
 from .integrations import presets
-from .session_manager import KubernetesSessionManager
+from .session_manager import KubernetesRuntime, KubernetesSessionManager
 
-__all__ = ["KubernetesSessionManager", "presets"]
+__all__ = ["KubernetesRuntime", "KubernetesSessionManager", "presets"]

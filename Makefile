@@ -1,3 +1,6 @@
+DOCKER_BIN := docker # use podman if you are using podman
+
+
 .PHONY: install
 install: ## Install the virtual environment and install the pre-commit hooks
 	@echo "🚀 Creating virtual environment using uv"
@@ -18,7 +21,7 @@ check: ## Run code quality tools.
 .PHONY: test
 test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
-	@uv run python -m pytest --cov --cov-config=pyproject.toml --cov-report=xml
+	@uv run python -m pytest -n auto --cov --cov-config=pyproject.toml --cov-report=xml
 
 .PHONY: build
 build: clean-build ## Build wheel file
@@ -33,22 +36,22 @@ clean-build: ## Clean build artifacts
 .PHONY: docker-build
 docker-build: ## Build the docker image
 	@echo "🚀 Building docker image"
-	@docker buildx build . --platform linux/amd64,linux/arm64 -t ghcr.io/bobmerkus/mcp-ephemeral-k8s:latest --push
+	@$(DOCKER_BIN) buildx build . --platform linux/amd64,linux/arm64 -t ghcr.io/bobmerkus/mcp-ephemeral-k8s:latest --push
 
 .PHONY: docker-build-local
 docker-build-local: ## Build the docker image locally
 	@echo "🚀 Building docker image"
-	@docker buildx build . -t ghcr.io/bobmerkus/mcp-ephemeral-k8s:latest --load
+	@$(DOCKER_BIN) buildx build . -t ghcr.io/bobmerkus/mcp-ephemeral-k8s:latest --load
 
 .PHONY: docker-build-proxy
 docker-build-proxy: ## Build the docker image proxy
 	@echo "🚀 Building docker image"
-	@docker buildx build . --file dockerfiles/mcp-ephemeral-k8s-proxy/Dockerfile -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --push
+	@$(DOCKER_BIN) buildx build . --file dockerfiles/mcp-ephemeral-k8s-proxy/Dockerfile -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --push
 
 .PHONY: docker-build-local-proxy
 docker-build-local-proxy: ## Build the docker image proxy locally
 	@echo "🚀 Building docker image"
-	@docker buildx build . --file dockerfiles/mcp-ephemeral-k8s-proxy/Dockerfile -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --load
+	@$(DOCKER_BIN) buildx build . --file dockerfiles/mcp-ephemeral-k8s-proxy/Dockerfile -t ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest --load
 
 .PHONY: publish
 publish: ## Publish a release to PyPI.

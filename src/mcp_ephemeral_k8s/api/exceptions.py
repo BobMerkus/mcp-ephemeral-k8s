@@ -14,8 +14,8 @@ class InvalidKubeConfigError(Exception):
 class MCPPortForwardError(Exception):
     """Exception raised when the MCP port forward fails."""
 
-    def __init__(self, pod_name: str, namespace: str, port: int):
-        self.message = f"Failed to create port forward: {pod_name=} {namespace=} {port=}"
+    def __init__(self, job_name: str, namespace: str, port: int):
+        self.message = f"Failed to create port forward: {job_name=} {namespace=} {port=}"
         super().__init__(self.message)
 
 
@@ -30,8 +30,8 @@ class MCPServerCreationError(Exception):
 class MCPJobNotFoundError(Exception):
     """Exception raised when the MCP job is not found."""
 
-    def __init__(self, namespace: str, pod_name: str):
-        self.message = f"Failed to find MCP job: {namespace=} {pod_name=}"
+    def __init__(self, namespace: str, job_name: str):
+        self.message = f"Failed to find MCP job: {namespace=} {job_name=}"
         super().__init__(self.message)
 
 
@@ -53,16 +53,16 @@ class MCPNamespaceNotFoundError(ValueError):
 class MCPJobTimeoutError(Exception):
     """Exception raised when the MCP job times out."""
 
-    def __init__(self, namespace: str, pod_name: str):
-        self.message = f"MCP job timed out: {namespace=} {pod_name=}"
+    def __init__(self, namespace: str, job_name: str):
+        self.message = f"MCP job timed out: {namespace=} {job_name=}"
         super().__init__(self.message)
 
 
 class MCPJobError(Exception):
     """Exception raised when the MCP job is in an error state."""
 
-    def __init__(self, namespace: str, pod_name: str, message: str):
-        self.message = f"MCP job error: {namespace=} {pod_name=} - {message}"
+    def __init__(self, namespace: str, job_name: str, message: str):
+        self.message = f"MCP job error: {namespace=} {job_name=} - {message}"
         super().__init__(self.message)
 
 
