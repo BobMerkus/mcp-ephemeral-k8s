@@ -11,5 +11,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['{{ include "mcp-ephemeral-k8s.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "mcp-ephemeral-k8s.fullname" . }}:{{ .Values.service.port }}/health']
   restartPolicy: Never
