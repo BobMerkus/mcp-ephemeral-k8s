@@ -1,6 +1,6 @@
 [project]
 name = "mcp-ephemeral-k8s"
-version = "0.0.3"
+version = "0.0.4"
 description = "Python implementation to spawn ephemeral Model Context Protocol (MCP) servers using the kubernetes API."
 authors = [{ name = "Bob Merkus", email = "bob.merkus@gmail.com" }]
 readme = "README.md"

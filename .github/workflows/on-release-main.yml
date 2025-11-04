@@ -126,6 +126,9 @@ jobs:
           git commit -m "Deploy documentation" || echo "No changes to commit"
           git push origin gh-pages
 
+          # Return to main branch for proper cleanup
+          git checkout main
+
   build-and-push:
     needs: publish
     runs-on: ubuntu-latest
