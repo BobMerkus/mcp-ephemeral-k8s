@@ -20,12 +20,20 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.13-slim AS runner
 
+# Create a non-root user
+RUN groupadd -r app && useradd -r -g app app
+
 # Copy the environment, but not the source code
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 
-# Copy the fastapi.py file
-RUN touch /app/__init__.py
-COPY src/mcp_ephemeral_k8s/app/fastapi.py /app/fastapi.py
+# Set working directory
+WORKDIR /app
+
+# Switch to non-root user
+USER app
+
+EXPOSE 8000
 
 # Run the application
-CMD [ "/app/.venv/bin/fastapi", "run", "/app/fastapi.py", "--host", "0.0.0.0", "--port", "8000" ]
+ENTRYPOINT [ "/app/.venv/bin/mcp-ephemeral-k8s" ]
+CMD [ "serve", "--transport", "sse", "--host", "0.0.0.0", "--port", "8000" ]

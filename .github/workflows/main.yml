@@ -66,11 +66,11 @@ jobs:
 
       - name: Run tests (unit only)
         if: ${{ matrix.python-version != '3.13' }}
-        run: uv run python -m pytest -m unit tests --cov --cov-config=pyproject.toml --cov-report=xml
+        run: uv run python -m pytest -m unit tests --cov --cov-config=pyproject.toml --cov-report=xml -n auto
 
       - name: Run tests (unit and integration)
         if: ${{ matrix.python-version == '3.13' }}
-        run: uv run python -m pytest tests --cov --cov-config=pyproject.toml --cov-report=xml
+        run: uv run python -m pytest tests --cov --cov-config=pyproject.toml --cov-report=xml -n auto
 
       - name: Check typing
         run: uv run mypy

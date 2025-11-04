@@ -76,12 +76,20 @@ resources:
 
 livenessProbe:
   httpGet:
-    path: /
-    port: http
+    path: /health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 10
 readinessProbe:
   httpGet:
-    path: /
-    port: http
+    path: /health
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 10
 
 autoscaling:
   enabled: false

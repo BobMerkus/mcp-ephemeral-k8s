@@ -6,16 +6,53 @@ metadata:
   labels:
     {{- include "mcp-ephemeral-k8s.labels" . | nindent 4 }}
 rules:
+  # Job management
   - apiGroups: ["batch"]
-    resources: ["jobs"]
+    resources: ["jobs", "cronjobs"]
     verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  # Core resources (needed to grant to spawned MCP servers)
   - apiGroups: [""]
-    resources: ["namespaces"]
-    verbs: ["get", "list"]
-  - apiGroups: [""]
-    resources: ["pods"]
+    resources: ["namespaces", "nodes"]
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
-    resources: ["services"]
+    resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log", "pods/exec", "pods/status"]
+    verbs: ["get", "list", "create"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create"]
+  # Apps resources (needed to grant to spawned MCP servers)
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  # ServiceAccount management for spawned MCP servers
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  # RBAC management for spawned MCP servers
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete", "bind", "escalate"]
+  # Networking resources (for spawned MCP servers)
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  # Storage resources (for spawned MCP servers)
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  # Policy resources (for spawned MCP servers)
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  # Autoscaling resources (for spawned MCP servers)
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  # API Services (for metrics-server and aggregation)
+  - apiGroups: ["apiregistration.k8s.io"]
+    resources: ["apiservices"]
     verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
 {{- end }}

@@ -2,16 +2,18 @@
 This module contains the models for the MCP ephemeral K8s library.
 """
 
-from enum import Enum
+from enum import StrEnum
+from functools import cached_property
 from typing import Any, Self
 
 from pydantic import BaseModel, Field, HttpUrl, computed_field, model_validator
 
 from mcp_ephemeral_k8s.api.exceptions import MCPInvalidRuntimeError
+from mcp_ephemeral_k8s.k8s.rbac import ServiceAccountConfig
 from mcp_ephemeral_k8s.k8s.uid import generate_unique_id
 
 
-class KubernetesRuntime(str, Enum):
+class KubernetesRuntime(StrEnum):
     """The runtime that is being used for Kubeconfig"""
 
     KUBECONFIG = "KUBECONFIG"
@@ -19,13 +21,27 @@ class KubernetesRuntime(str, Enum):
 
 
 class KubernetesProbeConfig(BaseModel):
-    """The configuration for the Kubernetes probe."""
+    """Configuration for Kubernetes readiness probe.
 
-    initial_delay_seconds: int = Field(default=10, description="The initial delay seconds for the probe")
-    period_seconds: int = Field(default=1, description="The period seconds for the probe")
-    timeout_seconds: int = Field(default=2, description="The timeout seconds for the probe")
-    success_threshold: int = Field(default=1, description="The success threshold for the probe")
-    failure_threshold: int = Field(default=300, description="The failure threshold for the probe")
+    The readiness probe is used to determine when a container is ready to accept traffic.
+    These defaults are tuned for MCP server startup, which may take time to install dependencies.
+
+    With defaults: waits 10s initially, then checks every 1s for up to 300 failures (5 minutes total).
+    """
+
+    initial_delay_seconds: int = Field(
+        default=10, description="Seconds to wait before performing the first probe (allows for container startup)"
+    )
+    period_seconds: int = Field(default=1, description="How often (in seconds) to perform the probe")
+    timeout_seconds: int = Field(default=2, description="Number of seconds after which the probe times out")
+    success_threshold: int = Field(
+        default=1,
+        description="Minimum consecutive successes for the probe to be considered successful after having failed",
+    )
+    failure_threshold: int = Field(
+        default=300,
+        description="Number of consecutive failures before giving up. With period_seconds=1, this allows 5 minutes for server startup",
+    )
 
 
 class EphemeralMcpServerConfig(BaseModel):
@@ -38,6 +54,11 @@ class EphemeralMcpServerConfig(BaseModel):
     runtime_mcp: str | None = Field(
         description="The runtime to use for the MCP container. Can be any supported MCP server runtime loadable via the `runtime_exec`. See the [MCP Server Runtimes](https://github.com/modelcontextprotocol/servers/tree/main) for a list of supported runtimes.",
         examples=["mcp-server-fetch", "@modelcontextprotocol/server-github"],
+    )
+    runtime_args: str = Field(
+        default_factory=str,
+        description="The arguments to pass to the MCP server runtime.",
+        examples=["--port 8080"],
     )
     image: str = Field(
         default="ghcr.io/bobmerkus/mcp-ephemeral-k8s-proxy:latest",
@@ -69,6 +90,10 @@ class EphemeralMcpServerConfig(BaseModel):
         default_factory=KubernetesProbeConfig,
         description="The configuration for the Kubernetes probe",
     )
+    sa_config: ServiceAccountConfig | None = Field(
+        default=None,
+        description="ServiceAccount RBAC configuration. If None, uses minimal preset by default.",
+    )
 
     @model_validator(mode="after")
     def validate_runtime_exec(self) -> Self:
@@ -90,14 +115,16 @@ class EphemeralMcpServerConfig(BaseModel):
         [mcp-proxy](https://github.com/sparfenyuk/mcp-proxy?tab=readme-ov-file#21-configuration)"""
         if self.runtime_exec is not None and self.runtime_mcp is not None:
             args = [
-                "--pass-environment",
-                f"--sse-port={self.port}",
-                f"--sse-host={self.host}",
                 self.runtime_exec,
                 self.runtime_mcp,
+                "--pass-environment",
+                f"--port={self.port}",
+                f"--host={self.host}",
             ]
             if self.cors_origins is not None:
                 args.extend(["--allow-origin", *self.cors_origins])
+            if self.runtime_args:
+                args.append(f"-- {self.runtime_args}")
             return args
         return None
 
@@ -108,7 +135,7 @@ class EphemeralMcpServerConfig(BaseModel):
         return self.image.split("/")[-1].split(":")[0]
 
     @computed_field  # type: ignore[prop-decorator]
-    @property
+    @cached_property
     def job_name(self) -> str:
         """The name of the job to use for the MCP server."""
         return generate_unique_id(prefix=self.image_name)
@@ -129,7 +156,7 @@ class EphemeralMcpServerConfig(BaseModel):
 class EphemeralMcpServer(BaseModel):
     """The MCP server that is running in a Kubernetes pod."""
 
-    pod_name: str = Field(
+    job_name: str = Field(
         description="The name of the pod that is running the MCP server", examples=["mcp-ephemeral-k8s-proxy-test"]
     )
     config: EphemeralMcpServerConfig = Field(
@@ -148,7 +175,7 @@ class EphemeralMcpServer(BaseModel):
     @property
     def url(self) -> HttpUrl:
         """The Uniform Resource Locator (URL) for the MCP server."""
-        return HttpUrl(f"http://{self.pod_name}.default.svc.cluster.local:{self.config.port}/")
+        return HttpUrl(f"http://{self.job_name}.default.svc.cluster.local:{self.config.port}/")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
