@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  mcp-ephemeral-k8s:
+  - apiVersion: v2
+    appVersion: 0.0.3
+    created: "2025-11-04T21:34:30.166056378Z"
+    description: A Helm chart for Kubernetes
+    digest: 5145adc17421866a8c2ddbd728f10bf50e08f761aedf80be2d19320186aec86a
+    name: mcp-ephemeral-k8s
+    type: application
+    urls:
+    - https://github.com/BobMerkus/mcp-ephemeral-k8s/releases/download/mcp-ephemeral-k8s-0.0.3/mcp-ephemeral-k8s-0.0.3.tgz
+    version: 0.0.3
+generated: "2025-11-04T21:34:30.166062219Z"
