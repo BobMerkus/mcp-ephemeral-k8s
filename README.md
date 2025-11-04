@@ -9,7 +9,7 @@
 A Python library for spawning ephemeral Model Context Protocol (MCP) servers on Kubernetes using Server-Sent Events (SSE).
 
 - **Github**: <https://github.com/BobMerkus/mcp-ephemeral-k8s/>
-- **Documentation**: <https://BobMerkus.github.io/mcp-ephemeral-k8s/>
+- **Documentation**: <https://BobMerkus.github.io/mcp-ephemeral-k8s/docs/>
 
 ## Features
 
@@ -19,7 +19,6 @@ A Python library for spawning ephemeral Model Context Protocol (MCP) servers on 
 - Works with [mcp-proxy](https://github.com/sparfenyuk/mcp-proxy) for `uvx` or `npx` runtimes
 - Supports both local kubeconfig and in-cluster configuration
 - Can be run as MCP server
-- Can be run as FastAPI server
 
 ## Usage
 
@@ -32,11 +31,22 @@ uvx mcp-ephemeral-k8s
 ### Using the Library
 
 ```python
+import asyncio
 from mcp_ephemeral_k8s import KubernetesSessionManager, presets
 
-with KubernetesSessionManager() as session_manager:
-    mcp_server = session_manager.create_mcp_server(presets.GITHUB, wait_for_ready=True)
-    print(mcp_server.sse_url)
+async def main():
+    async with KubernetesSessionManager() as session_manager:
+        mcp_server = await session_manager.create_mcp_server(
+            presets.K8S_MCP_SERVER, wait_for_ready=True, expose_port=True
+        )
+        print(mcp_server.sse_url)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+```
+Job 'mcp-ephemeral-k8s-proxy-1762291156-x17zuayy' in unknown state, waiting...
+http://mcp-ephemeral-k8s-proxy-1762291156-x17zuayy.default.svc.cluster.local:8080/sse
 ```
 
 ## Installation
@@ -133,12 +143,12 @@ helm uninstall mcp-ephemeral-k8s
    helm upgrade -i mcp-ephemeral-k8s charts/mcp-ephemeral-k8s --set image.tag=latest
    ```
 
-8. **Port forward the FastAPI server**
+8. **Port forward the MCP server**
    ```bash
    kubectl port-forward svc/mcp-ephemeral-k8s 8000:8000
    ```
 
 9. **Visit the FastAPI server**
    ```bash
-   open http://localhost:8000/docs
+   npx @modelcontextprotocol/inspector --sse http://localhost:8000/sse
    ```

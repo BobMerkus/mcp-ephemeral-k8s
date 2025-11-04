@@ -86,15 +86,45 @@ jobs:
   deploy-docs:
     needs: [publish, publish-helm-chart]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up the environment
         uses: ./.github/actions/setup-python-env
 
-      - name: Deploy documentation
-        run: uv run mkdocs gh-deploy --force
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Fetch gh-pages branch
+        run: git fetch origin gh-pages:gh-pages || true
+
+      - name: Deploy documentation to docs subdirectory
+        run: |
+          # Build docs on current branch first
+          uv run mkdocs build -d /tmp/mkdocs-site
+
+          # Check out gh-pages to preserve Helm charts
+          git checkout gh-pages || git checkout --orphan gh-pages
+
+          # Remove old docs directory but keep helm charts
+          rm -rf docs/
+
+          # Copy new docs from temp location
+          mkdir -p docs
+          cp -r /tmp/mkdocs-site/* docs/
+          rm -rf /tmp/mkdocs-site
+
+          # Commit and push
+          git add docs/
+          git commit -m "Deploy documentation" || echo "No changes to commit"
+          git push origin gh-pages
 
   build-and-push:
     needs: publish

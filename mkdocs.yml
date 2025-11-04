@@ -1,6 +1,6 @@
 site_name: mcp-ephemeral-k8s
 repo_url: https://github.com/BobMerkus/mcp-ephemeral-k8s
-site_url: https://BobMerkus.github.io/mcp-ephemeral-k8s
+site_url: https://BobMerkus.github.io/mcp-ephemeral-k8s/docs
 site_description: Python implementation to spawn ephemeral Model Context Protocol (MCP) servers using the kubernetes API.
 site_author: Bob Merkus
 edit_uri: edit/main/docs/
