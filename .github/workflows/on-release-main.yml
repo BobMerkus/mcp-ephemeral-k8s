@@ -182,14 +182,14 @@ jobs:
           labels: ${{ steps.meta-proxy.outputs.labels }}
 
       - name: Generate attestation for main image
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push-main.outputs.digest }}
           push-to-registry: true
 
       - name: Generate attestation for proxy image
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}-proxy
           subject-digest: ${{ steps.push-proxy.outputs.digest }}
