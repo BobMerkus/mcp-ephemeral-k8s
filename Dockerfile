@@ -1,5 +1,5 @@
 # Install uv
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 # Change the working directory to the `app` directory
@@ -18,7 +18,7 @@ ADD . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-editable --no-dev
 
-FROM python:3.13-slim AS runner
+FROM python:3.14-slim AS runner
 
 # Create a non-root user
 RUN groupadd -r app && useradd -r -g app app
