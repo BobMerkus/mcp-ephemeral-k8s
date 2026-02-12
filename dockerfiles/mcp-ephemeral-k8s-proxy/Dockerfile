@@ -1,4 +1,4 @@
-FROM ghcr.io/sparfenyuk/mcp-proxy:v0.10.0
+FROM ghcr.io/sparfenyuk/mcp-proxy:v0.11.0
 
 # Add the local bin to the path
 ENV PATH="/usr/local/bin:$PATH"
